@@ -1,6 +1,6 @@
-# Marketing Automation Software
+# The Digital Connect CRM
 
-A production-ready Marketing Automation Platform built with **NestJS**, **MongoDB Atlas**, **Next.js**, and a **Durable Queue Engine**, featuring a minimal, clean, modern light UI.
+A production-ready Enterprise CRM & Marketing Automation Platform for **The Digital Connect** (Group of Chamunda Enterprise) built with **NestJS**, **MongoDB Atlas**, **Next.js 14**, and a **Durable Queue Engine**, featuring an executive tech blue aesthetic UI.
 
 ---
 

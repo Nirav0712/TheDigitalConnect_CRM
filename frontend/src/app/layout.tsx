@@ -4,11 +4,11 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { AppShell } from '../components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: 'Imprenta CRM | Customer Relationship Management',
-  description: 'Imprenta CRM helps businesses manage contacts, leads, follow-ups, campaigns, and customer relationships in one platform.',
+  title: 'The Digital Connect CRM | Smart CRM & Marketing Suite',
+  description: 'The Digital Connect CRM - Group of Chamunda Enterprise helps businesses manage contacts, leads, follow-ups, campaigns, and customer relationships in one platform.',
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.png',
+    icon: '/logo.png',
+    shortcut: '/logo.png',
     apple: '/logo.png',
   },
 };
