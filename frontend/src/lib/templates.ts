@@ -1,6 +1,7 @@
 /**
  * Shared Template Management for WhatsApp and Email
  * Provides persistent storage (localStorage) + variable substitution helpers.
+ * Ensures deleted templates remain permanently deleted across tabs, reloads, and empty states.
  */
 
 export interface WhatsAppSnippet {
@@ -100,49 +101,122 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
   },
 ];
 
-const WP_STORAGE_KEY = 'tdc_whatsapp_snippets_v1';
-const EMAIL_STORAGE_KEY = 'tdc_email_templates_v1';
+const WP_STORAGE_KEY = 'tdc_whatsapp_snippets_v2';
+const WP_INITIALIZED_KEY = 'tdc_whatsapp_snippets_init_v2';
+const WP_DELETED_KEY = 'tdc_whatsapp_snippets_deleted_v2';
+
+const EMAIL_STORAGE_KEY = 'tdc_email_templates_v2';
+const EMAIL_INITIALIZED_KEY = 'tdc_email_templates_init_v2';
+const EMAIL_DELETED_KEY = 'tdc_email_templates_deleted_v2';
+
+function getDeletedWhatsAppIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(WP_DELETED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function getDeletedEmailIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(EMAIL_DELETED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
 
 // ================= WhatsApp Snippets Management =================
 
 export function getStoredWhatsAppSnippets(): WhatsAppSnippet[] {
   if (typeof window === 'undefined') return DEFAULT_WHATSAPP_SNIPPETS;
   try {
-    const raw = localStorage.getItem(WP_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(WP_STORAGE_KEY, JSON.stringify(DEFAULT_WHATSAPP_SNIPPETS));
-      return DEFAULT_WHATSAPP_SNIPPETS;
+    const deleted = getDeletedWhatsAppIds();
+    const isInit = localStorage.getItem(WP_INITIALIZED_KEY);
+
+    if (!isInit) {
+      // Check v1 storage for backward compatibility
+      const oldRaw = localStorage.getItem('tdc_whatsapp_snippets_v1');
+      let initialData = DEFAULT_WHATSAPP_SNIPPETS;
+      if (oldRaw) {
+        try {
+          const parsedOld = JSON.parse(oldRaw);
+          if (Array.isArray(parsedOld)) initialData = parsedOld;
+        } catch {}
+      }
+      const filtered = initialData.filter((s) => !deleted.has(s.id));
+      localStorage.setItem(WP_STORAGE_KEY, JSON.stringify(filtered));
+      localStorage.setItem(WP_INITIALIZED_KEY, 'true');
+      return filtered;
     }
+
+    const raw = localStorage.getItem(WP_STORAGE_KEY);
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_WHATSAPP_SNIPPETS;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((s) => s && s.id && !deleted.has(s.id));
   } catch (err) {
-    return DEFAULT_WHATSAPP_SNIPPETS;
+    return [];
   }
 }
 
 export function saveStoredWhatsAppSnippet(snippet: WhatsAppSnippet): WhatsAppSnippet[] {
-  const current = getStoredWhatsAppSnippets();
-  const existingIdx = current.findIndex((s) => s.id === snippet.id);
-  let updated: WhatsAppSnippet[];
-  if (existingIdx >= 0) {
-    updated = [...current];
-    updated[existingIdx] = snippet;
-  } else {
-    updated = [snippet, ...current];
-  }
-  if (typeof window !== 'undefined') {
+  if (typeof window === 'undefined') return [snippet];
+  try {
+    const deleted = getDeletedWhatsAppIds();
+    if (deleted.has(snippet.id)) {
+      deleted.delete(snippet.id);
+      localStorage.setItem(WP_DELETED_KEY, JSON.stringify(Array.from(deleted)));
+    }
+
+    const current = getStoredWhatsAppSnippets();
+    const existingIdx = current.findIndex((s) => s.id === snippet.id);
+    let updated: WhatsAppSnippet[];
+    if (existingIdx >= 0) {
+      updated = [...current];
+      updated[existingIdx] = snippet;
+    } else {
+      updated = [snippet, ...current];
+    }
     localStorage.setItem(WP_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(WP_INITIALIZED_KEY, 'true');
+    return updated;
+  } catch (err) {
+    return [snippet];
   }
-  return updated;
 }
 
 export function deleteStoredWhatsAppSnippet(id: string): WhatsAppSnippet[] {
-  const current = getStoredWhatsAppSnippets();
-  const updated = current.filter((s) => s.id !== id);
-  if (typeof window !== 'undefined') {
+  if (typeof window === 'undefined') return [];
+  try {
+    // Mark as permanently deleted
+    const deleted = getDeletedWhatsAppIds();
+    deleted.add(id);
+    localStorage.setItem(WP_DELETED_KEY, JSON.stringify(Array.from(deleted)));
+
+    const current = getStoredWhatsAppSnippets();
+    const updated = current.filter((s) => s.id !== id);
     localStorage.setItem(WP_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(WP_INITIALIZED_KEY, 'true');
+
+    // Also clean up old v1 key if present
+    try {
+      const v1Raw = localStorage.getItem('tdc_whatsapp_snippets_v1');
+      if (v1Raw) {
+        const v1Parsed = JSON.parse(v1Raw);
+        if (Array.isArray(v1Parsed)) {
+          localStorage.setItem('tdc_whatsapp_snippets_v1', JSON.stringify(v1Parsed.filter((s: any) => s.id !== id)));
+        }
+      }
+    } catch {}
+
+    return updated;
+  } catch (err) {
+    return [];
   }
-  return updated;
 }
 
 // ================= Email Templates Management =================
@@ -150,41 +224,89 @@ export function deleteStoredWhatsAppSnippet(id: string): WhatsAppSnippet[] {
 export function getStoredEmailTemplates(): EmailTemplate[] {
   if (typeof window === 'undefined') return DEFAULT_EMAIL_TEMPLATES;
   try {
-    const raw = localStorage.getItem(EMAIL_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(DEFAULT_EMAIL_TEMPLATES));
-      return DEFAULT_EMAIL_TEMPLATES;
+    const deleted = getDeletedEmailIds();
+    const isInit = localStorage.getItem(EMAIL_INITIALIZED_KEY);
+
+    if (!isInit) {
+      // Check v1 storage for backward compatibility
+      const oldRaw = localStorage.getItem('tdc_email_templates_v1');
+      let initialData = DEFAULT_EMAIL_TEMPLATES;
+      if (oldRaw) {
+        try {
+          const parsedOld = JSON.parse(oldRaw);
+          if (Array.isArray(parsedOld)) initialData = parsedOld;
+        } catch {}
+      }
+      const filtered = initialData.filter((t) => !deleted.has(t.id));
+      localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(filtered));
+      localStorage.setItem(EMAIL_INITIALIZED_KEY, 'true');
+      return filtered;
     }
+
+    const raw = localStorage.getItem(EMAIL_STORAGE_KEY);
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_EMAIL_TEMPLATES;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((t) => t && t.id && !deleted.has(t.id));
   } catch (err) {
-    return DEFAULT_EMAIL_TEMPLATES;
+    return [];
   }
 }
 
 export function saveStoredEmailTemplate(template: EmailTemplate): EmailTemplate[] {
-  const current = getStoredEmailTemplates();
-  const existingIdx = current.findIndex((t) => t.id === template.id);
-  let updated: EmailTemplate[];
-  if (existingIdx >= 0) {
-    updated = [...current];
-    updated[existingIdx] = template;
-  } else {
-    updated = [template, ...current];
-  }
-  if (typeof window !== 'undefined') {
+  if (typeof window === 'undefined') return [template];
+  try {
+    const deleted = getDeletedEmailIds();
+    if (deleted.has(template.id)) {
+      deleted.delete(template.id);
+      localStorage.setItem(EMAIL_DELETED_KEY, JSON.stringify(Array.from(deleted)));
+    }
+
+    const current = getStoredEmailTemplates();
+    const existingIdx = current.findIndex((t) => t.id === template.id);
+    let updated: EmailTemplate[];
+    if (existingIdx >= 0) {
+      updated = [...current];
+      updated[existingIdx] = template;
+    } else {
+      updated = [template, ...current];
+    }
     localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(EMAIL_INITIALIZED_KEY, 'true');
+    return updated;
+  } catch (err) {
+    return [template];
   }
-  return updated;
 }
 
 export function deleteStoredEmailTemplate(id: string): EmailTemplate[] {
-  const current = getStoredEmailTemplates();
-  const updated = current.filter((t) => t.id !== id);
-  if (typeof window !== 'undefined') {
+  if (typeof window === 'undefined') return [];
+  try {
+    // Mark as permanently deleted
+    const deleted = getDeletedEmailIds();
+    deleted.add(id);
+    localStorage.setItem(EMAIL_DELETED_KEY, JSON.stringify(Array.from(deleted)));
+
+    const current = getStoredEmailTemplates();
+    const updated = current.filter((t) => t.id !== id);
     localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(EMAIL_INITIALIZED_KEY, 'true');
+
+    // Also clean up old v1 key if present
+    try {
+      const v1Raw = localStorage.getItem('tdc_email_templates_v1');
+      if (v1Raw) {
+        const v1Parsed = JSON.parse(v1Raw);
+        if (Array.isArray(v1Parsed)) {
+          localStorage.setItem('tdc_email_templates_v1', JSON.stringify(v1Parsed.filter((t: any) => t.id !== id)));
+        }
+      }
+    } catch {}
+
+    return updated;
+  } catch (err) {
+    return [];
   }
-  return updated;
 }
 
 // ================= Variable Interpolation Helper =================
