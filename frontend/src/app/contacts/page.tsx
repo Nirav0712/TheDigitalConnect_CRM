@@ -426,11 +426,11 @@ export default function ContactsPage() {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-2xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Main search bar */}
-          <div className="relative flex-1 min-w-[280px] max-w-md">
+          <div className="relative w-full sm:w-auto sm:flex-1 min-w-0 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name, email, phone, company, dept..."
+              placeholder="Search by name, email, phone, company..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -765,7 +765,7 @@ export default function ContactsPage() {
         )}
 
         {/* Pagination Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
           <div>
             Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{contacts.length}</span> of{' '}
             <span className="font-semibold text-slate-700 dark:text-slate-200">{total}</span> records
@@ -797,7 +797,7 @@ export default function ContactsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
             {/* Detail Header with Actions */}
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 flex items-start justify-between">
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">

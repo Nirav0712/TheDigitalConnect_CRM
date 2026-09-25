@@ -612,28 +612,28 @@ export default function EmailInboxPage() {
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & OMNI-SEARCH BAR                                            */}
       {/* ========================================================================= */}
-      <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 flex items-center justify-between gap-4 flex-shrink-0 z-20">
+      <header className="min-h-16 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-4 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 z-20">
         {/* Left: App/Folder Title & Account Selector */}
-        <div className="flex items-center gap-3 min-w-max">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-max">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors md:flex hidden"
+            className="p-1.5 sm:p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
             title="Toggle Sidebar"
           >
-            <SlidersHorizontal className="w-5 h-5" />
+            <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-              <Mail className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 flex-shrink-0">
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-base leading-none text-slate-900 dark:text-white flex items-center gap-2">
+              <h1 className="font-bold text-sm sm:text-base leading-none text-slate-900 dark:text-white flex items-center gap-1.5 sm:gap-2">
                 Gmail-Style Mail
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 capitalize">
+                <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 capitalize">
                   {selectedLabel ? `Label: ${selectedLabel}` : currentFolder}
                 </span>
               </h1>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[170px] sm:max-w-none">
                 {currentAccount?.emailAddress || 'No account selected'}
               </div>
             </div>
@@ -641,18 +641,18 @@ export default function EmailInboxPage() {
         </div>
 
         {/* Center: Omni-Search Bar */}
-        <div className="flex-1 max-w-2xl relative">
+        <div className="w-full sm:w-auto sm:flex-1 max-w-2xl relative order-3 sm:order-2">
           <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 px-3.5 py-1.5 focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-500 transition-all shadow-sm">
             <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search in mail (sender, subject, keyword)..."
+              placeholder="Search in mail (sender, subject)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') setActiveSearch(searchQuery);
               }}
-              className="bg-transparent border-none outline-none text-sm w-full text-slate-800 dark:text-slate-200 placeholder-slate-400"
+              className="bg-transparent border-none outline-none text-xs sm:text-sm w-full text-slate-800 dark:text-slate-200 placeholder-slate-400"
             />
             {searchQuery && (
               <button
@@ -780,8 +780,8 @@ export default function EmailInboxPage() {
         {/* ----------------------------------------------------------------------- */}
         <aside
           className={`bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 transition-all duration-300 z-10 ${
-            sidebarCollapsed ? 'w-16 p-2' : 'w-60 p-3'
-          }`}
+            sidebarCollapsed ? 'hidden md:flex w-16 p-2' : 'w-56 sm:w-60 p-3'
+          } ${selectedConversation ? 'hidden lg:flex' : 'flex'}`}
         >
           {/* Primary "Compose" Button */}
           <button
@@ -1512,10 +1512,10 @@ export default function EmailInboxPage() {
         <div
           className={`fixed transition-all duration-300 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl flex flex-col overflow-hidden ${
             isComposeMaximized
-              ? 'inset-6 w-auto h-auto'
+              ? 'inset-2 sm:inset-6 w-auto h-auto'
               : isComposeMinimized
-              ? 'bottom-0 right-8 w-72 h-12'
-              : 'bottom-0 right-8 w-[580px] h-[580px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-5rem)]'
+              ? 'bottom-0 right-2 sm:right-8 w-72 h-12'
+              : 'bottom-0 right-0 sm:right-8 w-full sm:w-[580px] h-[85vh] sm:h-[580px] max-w-full sm:max-w-[calc(100vw-2rem)] max-h-[100vh] rounded-b-none sm:rounded-b-2xl'
           }`}
         >
           {/* Modal Header Bar */}
