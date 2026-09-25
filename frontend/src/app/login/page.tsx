@@ -94,7 +94,7 @@ function LoginForm() {
             
             <img
               src="/logo.png"
-              alt="The Digital Connect"
+              alt="The Crystal Engage"
               className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_4px_12px_rgba(14,165,233,0.25)]"
             />
           </div>
@@ -217,7 +217,7 @@ function LoginForm() {
             <span>256-Bit SSL Encrypted Multi-Tenant Architecture</span>
           </div>
           <p className="text-[10px] text-slate-400">
-            © {new Date().getFullYear()} The Digital Connect • Group of Chamunda Enterprise
+            © {new Date().getFullYear()} The Crystal Engage • Group of Chamunda Enterprise
           </p>
         </div>
       </div>

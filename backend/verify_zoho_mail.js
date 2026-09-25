@@ -77,8 +77,8 @@ async function verifyZoho() {
           accountId: zohoAcc._id,
           toEmail: recipientArg.trim(),
           subject: 'AUTOMATION_OS_REAL_EMAIL_TEST',
-          bodyText: `Hello,\n\nThis is a controlled real email delivery test from The Digital Connect's Zoho Mail account.\n\nTest ID:\nAUTOMATION_OS_REAL_EMAIL_TEST\n\nPlease confirm whether this email was received.\n\nRegards,\nThe Digital Connect`,
-          bodyHtml: `<p>Hello,</p><p>This is a controlled real email delivery test from The Digital Connect's Zoho Mail account.</p><p><strong>Test ID:</strong><br/>AUTOMATION_OS_REAL_EMAIL_TEST</p><p>Please confirm whether this email was received.</p><p>Regards,<br/>The Digital Connect</p>`,
+          bodyText: `Hello,\n\nThis is a controlled real email delivery test from The Crystal Engage's Zoho Mail account.\n\nTest ID:\nAUTOMATION_OS_REAL_EMAIL_TEST\n\nPlease confirm whether this email was received.\n\nRegards,\nThe Crystal Engage`,
+          bodyHtml: `<p>Hello,</p><p>This is a controlled real email delivery test from The Crystal Engage's Zoho Mail account.</p><p><strong>Test ID:</strong><br/>AUTOMATION_OS_REAL_EMAIL_TEST</p><p>Please confirm whether this email was received.</p><p>Regards,<br/>The Crystal Engage</p>`,
         };
 
         const sendRes = await httpRequest(

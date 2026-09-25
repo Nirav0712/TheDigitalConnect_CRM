@@ -68,7 +68,7 @@ export class AuthService implements OnModuleInit {
     try {
       if (this.userModel?.db?.readyState !== 1) return;
       const defaultEmail = (process.env.ADMIN_EMAIL || 'thedigitalconnect712@gmail.com').trim().toLowerCase();
-      const defaultPassword = process.env.ADMIN_PASSWORD || 'Nirav@0712';
+      const defaultPassword = process.env.ADMIN_PASSWORD || 'TDC@@712';
       const defaultOrg = (process.env.DEFAULT_ORGANIZATION_ID || 'default-org').trim();
 
       const existing = await this.userModel.findOne({
@@ -82,7 +82,7 @@ export class AuthService implements OnModuleInit {
         const { hash, salt } = this.hashPassword(defaultPassword);
         await this.userModel.create({
           email: defaultEmail,
-          name: 'The Digital Connect Administrator',
+          name: 'The Crystal Engage Administrator',
           passwordHash: hash,
           salt,
           organizationId: defaultOrg,
@@ -90,6 +90,11 @@ export class AuthService implements OnModuleInit {
           isActive: true,
         });
         this.logger.log(`Initialized administrative user (${defaultEmail}) for tenant: ${defaultOrg}`);
+      } else {
+        const { hash, salt } = this.hashPassword(defaultPassword);
+        existing.passwordHash = hash;
+        existing.salt = salt;
+        await existing.save().catch(() => {});
       }
     } catch (err: any) {
       this.logger.warn(`Could not seed default admin user: ${err.message}`);
@@ -111,16 +116,16 @@ export class AuthService implements OnModuleInit {
 
     const normalizedIdentifier = email.trim().toLowerCase();
     const adminEmail = (process.env.ADMIN_EMAIL || 'thedigitalconnect712@gmail.com').trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Nirav@0712';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'TDC@@712';
     const defaultOrg = (process.env.DEFAULT_ORGANIZATION_ID || 'default-org').trim();
 
     const validAdminCredentials: Record<string, string[]> = {
-      'thedigitalconnect712@gmail.com': ['Nirav@0712', 'nirav@0712', 'admin123', 'Admin123'],
-      'thedigitalconnect712': ['Nirav@0712', 'nirav@0712', 'admin123', 'Admin123'],
-      'info@thedigitalconnect.in': ['Nirav@0712', 'nirav@0712', 'CQffEq6yU263', 'admin123', 'Admin123'],
-      [adminEmail]: [adminPassword, 'Nirav@0712', 'nirav@0712', 'admin123', 'Admin123'],
-      'admin@imprenta.com': ['admin123', 'Admin123', 'Nirav@0712', 'nirav@0712'],
-      'admin': ['admin123', 'Admin123', 'Nirav@0712', 'nirav@0712'],
+      'thedigitalconnect712@gmail.com': [adminPassword, 'TDC@@712'],
+      'thedigitalconnect712': [adminPassword, 'TDC@@712'],
+      'info@thedigitalconnect.in': [adminPassword, 'TDC@@712'],
+      [adminEmail]: [adminPassword, 'TDC@@712'],
+      'admin@imprenta.com': [adminPassword, 'TDC@@712'],
+      'admin': [adminPassword, 'TDC@@712'],
     };
 
     const validPasswords = validAdminCredentials[normalizedIdentifier] || [];

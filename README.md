@@ -1,6 +1,6 @@
-# The Digital Connect CRM
+# The Crystal Engage CRM
 
-A production-ready Enterprise CRM & Marketing Automation Platform for **The Digital Connect** (Group of Chamunda Enterprise) built with **NestJS**, **MongoDB Atlas**, **Next.js 14**, and a **Durable Queue Engine**, featuring an executive tech blue aesthetic UI.
+A production-ready Enterprise CRM & Marketing Automation Platform for **The Crystal Engage** (Group of Chamunda Enterprise) built with **NestJS**, **MongoDB Atlas**, **Next.js 14**, and a **Durable Queue Engine**, featuring an executive tech blue aesthetic UI.
 
 ---
 

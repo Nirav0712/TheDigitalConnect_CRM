@@ -50,8 +50,8 @@ export function Navbar() {
         <div className="flex items-center gap-1.5 sm:gap-2 truncate">
           <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-800 whitespace-nowrap">
             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden xs:inline">The Digital Connect</span>
-            <span className="xs:hidden">TDC</span>
+            <span className="hidden xs:inline">The Crystal Engage</span>
+            <span className="xs:hidden">TCE</span>
           </span>
           <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 truncate">
             <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />

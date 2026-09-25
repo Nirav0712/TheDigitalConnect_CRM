@@ -50,7 +50,7 @@ export default function EmailTemplatesPage() {
 
     const formattedHtml = newTmpl.bodyText
       ? `<p>${newTmpl.bodyText.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`
-      : `<p>Hello {{firstName}},</p><p>Thank you for connecting with us at {{company}}.</p><p>Best regards,<br/>The Digital Connect Team</p>`;
+      : `<p>Hello {{firstName}},</p><p>Thank you for connecting with us at {{company}}.</p><p>Best regards,<br/>The Crystal Engage Team</p>`;
 
     const created: EmailTemplate = {
       id: `em_${Date.now()}`,
@@ -355,7 +355,7 @@ export default function EmailTemplatesPage() {
                 </div>
                 <textarea
                   rows={5}
-                  placeholder="Hi {{firstName}},\n\nThank you for reaching out to The Digital Connect regarding {{company}}...\n\nBest regards,\nThe Digital Connect Team"
+                  placeholder="Hi {{firstName}},\n\nThank you for reaching out to The Crystal Engage regarding {{company}}...\n\nBest regards,\nThe Crystal Engage Team"
                   value={newTmpl.bodyText}
                   onChange={(e) => setNewTmpl({ ...newTmpl, bodyText: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"

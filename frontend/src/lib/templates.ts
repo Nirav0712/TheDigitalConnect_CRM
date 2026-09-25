@@ -50,7 +50,7 @@ export const DEFAULT_WHATSAPP_SNIPPETS: WhatsAppSnippet[] = [
     id: 'wp_snip_4',
     name: 'Customer Support Welcome',
     category: 'SUPPORT',
-    bodyText: 'Hi {{name}}, welcome to The Digital Connect VIP support channel. How can our team assist you today?',
+    bodyText: 'Hi {{name}}, welcome to The Crystal Engage VIP support channel. How can our team assist you today?',
     variables: ['name'],
   },
   {
@@ -66,10 +66,10 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
   {
     id: 'em_tmpl_1',
     name: 'B2B Welcome Introduction',
-    subject: 'Welcome to The Digital Connect, {{firstName}}!',
+    subject: 'Welcome to The Crystal Engage, {{firstName}}!',
     category: 'Onboarding',
-    bodyHtml: `<p>Hi {{firstName}},</p><p>Thank you for connecting with us at {{company}}. We are thrilled to show you how our The Digital Connect CRM platform can streamline your customer relationships and multi-channel outbound campaigns.</p><p>Best regards,<br/><strong>The Digital Connect Team</strong></p>`,
-    bodyText: `Hi {{firstName}},\n\nThank you for connecting with us at {{company}}. We are thrilled to show you how our The Digital Connect CRM platform can streamline your customer relationships and outbound campaigns.\n\nBest regards,\nThe Digital Connect Team`,
+    bodyHtml: `<p>Hi {{firstName}},</p><p>Thank you for connecting with us at {{company}}. We are thrilled to show you how our The Crystal Engage CRM platform can streamline your customer relationships and multi-channel outbound campaigns.</p><p>Best regards,<br/><strong>The Crystal Engage Team</strong></p>`,
+    bodyText: `Hi {{firstName}},\n\nThank you for connecting with us at {{company}}. We are thrilled to show you how our The Crystal Engage CRM platform can streamline your customer relationships and outbound campaigns.\n\nBest regards,\nThe Crystal Engage Team`,
     variables: ['firstName', 'company'],
   },
   {
@@ -77,8 +77,8 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
     name: 'Product Demo Follow-Up',
     subject: 'Quick recap from our discussion, {{firstName}}',
     category: 'Sales',
-    bodyHtml: `<p>Hello {{firstName}},</p><p>Following up on our recent product demo for {{company}}. Attached you will find our custom proposal and integration roadmap.</p><p>Feel free to reply directly with any questions!</p><p>Warm regards,<br/>The Digital Connect Team</p>`,
-    bodyText: `Hello {{firstName}},\n\nFollowing up on our recent product demo for {{company}}. Attached you will find our custom proposal and integration roadmap.\n\nFeel free to reply directly with any questions!\n\nWarm regards,\nThe Digital Connect Team`,
+    bodyHtml: `<p>Hello {{firstName}},</p><p>Following up on our recent product demo for {{company}}. Attached you will find our custom proposal and integration roadmap.</p><p>Feel free to reply directly with any questions!</p><p>Warm regards,<br/>The Crystal Engage Team</p>`,
+    bodyText: `Hello {{firstName}},\n\nFollowing up on our recent product demo for {{company}}. Attached you will find our custom proposal and integration roadmap.\n\nFeel free to reply directly with any questions!\n\nWarm regards,\nThe Crystal Engage Team`,
     variables: ['firstName', 'company'],
   },
   {
@@ -86,8 +86,8 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
     name: 'Special Promotion Offer',
     subject: 'Exclusive growth offer for {{company}}',
     category: 'Marketing',
-    bodyHtml: `<p>Dear {{fullName}},</p><p>We are offering special annual subscription pricing for high-volume WhatsApp & Email automation teams.</p><p>Claim your discount before the end of the quarter!</p><p>Best,<br/>The Digital Connect Team</p>`,
-    bodyText: `Dear {{fullName}},\n\nWe are offering special annual subscription pricing for high-volume WhatsApp & Email automation teams.\n\nClaim your discount before the end of the quarter!\n\nBest,\nThe Digital Connect Team`,
+    bodyHtml: `<p>Dear {{fullName}},</p><p>We are offering special annual subscription pricing for high-volume WhatsApp & Email automation teams.</p><p>Claim your discount before the end of the quarter!</p><p>Best,<br/>The Crystal Engage Team</p>`,
+    bodyText: `Dear {{fullName}},\n\nWe are offering special annual subscription pricing for high-volume WhatsApp & Email automation teams.\n\nClaim your discount before the end of the quarter!\n\nBest,\nThe Crystal Engage Team`,
     variables: ['fullName', 'company'],
   },
   {
