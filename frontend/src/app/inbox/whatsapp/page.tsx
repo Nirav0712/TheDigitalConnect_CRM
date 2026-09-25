@@ -41,7 +41,7 @@ import {
   HelpCircle,
   ArrowLeft,
 } from 'lucide-react';
-import { inboxApi, whatsappApi, contactsApi, extractErrorMessage } from '../../../lib/api';
+import { inboxApi, whatsappApi, contactsApi, templatesApi, extractErrorMessage } from '../../../lib/api';
 import {
   WhatsAppSnippet,
   getStoredWhatsAppSnippets,
@@ -186,8 +186,18 @@ function WhatsAppInboxPageContent() {
   // Load templates when modal opens
   useEffect(() => {
     if (showTemplateModal) {
-      const stored = getStoredWhatsAppSnippets();
-      setAvailableSnippets(stored);
+      templatesApi
+        .getTemplates('whatsapp')
+        .then((dbSnippets) => {
+          if (dbSnippets && Array.isArray(dbSnippets) && dbSnippets.length > 0) {
+            setAvailableSnippets(dbSnippets);
+          } else {
+            setAvailableSnippets(getStoredWhatsAppSnippets());
+          }
+        })
+        .catch(() => {
+          setAvailableSnippets(getStoredWhatsAppSnippets());
+        });
     }
   }, [showTemplateModal]);
 

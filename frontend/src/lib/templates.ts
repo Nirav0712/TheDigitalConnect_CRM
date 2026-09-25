@@ -26,6 +26,20 @@ export interface EmailTemplate {
 
 export const DEFAULT_WHATSAPP_SNIPPETS: WhatsAppSnippet[] = [
   {
+    id: 'wp_snip_web_dev',
+    name: 'website_development',
+    category: 'SALES',
+    bodyText: `Hello {{firstName}},\n\nWe hope you're doing well!\n\nAre you looking to build a professional website for {{company}}? 🌐\n\nAt The Crystal Engage, we help businesses create modern, responsive, and SEO-friendly websites that attract customers and strengthen their online presence.\n\nOur Website Development Services Include:\n✅ Custom & Modern Website Design\n✅ Mobile Responsive & Fast Loading\n✅ E-Commerce & Business Websites\n✅ SEO-Friendly Structure\n✅ Lead Capture & WhatsApp Integration\n\nLet's connect for a quick 10-minute discussion to see how we can build the perfect website for your business.\n\nAre you available for a quick call today or tomorrow?`,
+    variables: ['firstName', 'company'],
+  },
+  {
+    id: 'wp_snip_web_redesign',
+    name: 'website_redesign',
+    category: 'SALES',
+    bodyText: `Hello {{firstName}},\n\nWe came across {{company}} and wanted to connect with you regarding your website.\n\nIs your existing website looking outdated or in need of a modern upgrade? 💻✨\n\nAt The Crystal Engage, we help businesses redesign their websites with modern UI/UX, improved performance, and a better user experience.\n\nOur Website Redesign Services Include:\n✅ Fresh & Modern UI/UX Design\n✅ Faster Speed & Performance Optimization\n✅ Mobile-First & Responsive Layout\n✅ Conversion-Focused Design\n✅ SEO & WhatsApp Integration\n\nWould you be open to a quick 10-minute chat to discuss how we can revamp your website?\n\nLet us know a convenient time for a call!`,
+    variables: ['firstName', 'company'],
+  },
+  {
     id: 'wp_snip_1',
     name: 'Order Confirmation & Receipt',
     category: 'TRANSACTIONAL',
@@ -55,7 +69,7 @@ export const DEFAULT_WHATSAPP_SNIPPETS: WhatsAppSnippet[] = [
   },
   {
     id: 'wp_snip_5',
-    name: 'Lead Follow-up & Introduction',
+    name: 'Lead Follow up & Introduction',
     category: 'SALES',
     bodyText: 'Hello {{name}}, I hope you are having a productive week! Following up regarding your inquiry with {{company}}. When would be a good time for a quick 5-minute call?',
     variables: ['name', 'company'],

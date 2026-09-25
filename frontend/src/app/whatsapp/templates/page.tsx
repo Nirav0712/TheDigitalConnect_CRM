@@ -56,16 +56,57 @@ export default function WhatsAppTemplatesPage() {
     setLoading(true);
     setErrorBanner(null);
     try {
-      const [dbSnippets, conns, tmpls] = await Promise.all([
-        templatesApi.getTemplates('whatsapp').catch(() => getStoredWhatsAppSnippets()),
+      const [rawDbSnippets, conns, tmpls] = await Promise.all([
+        templatesApi.getTemplates('whatsapp').catch(() => null),
         whatsappApi.getConnections().catch(() => []),
         whatsappApi.getTemplates(selectedConnectionId || undefined).catch(() => []),
       ]);
 
-      const finalSnippets = dbSnippets && dbSnippets.length > 0 ? dbSnippets : getStoredWhatsAppSnippets();
+      let finalSnippets: WhatsAppSnippet[] = [];
+
+      if (rawDbSnippets && Array.isArray(rawDbSnippets)) {
+        // Auto-migrate any local snippets that are missing in DB
+        const localSnippets = getStoredWhatsAppSnippets();
+        const missingInDb = localSnippets.filter(
+          (ls) =>
+            !rawDbSnippets.some(
+              (db) => db.id === ls.id || db.name.toLowerCase() === ls.name.toLowerCase()
+            )
+        );
+
+        if (missingInDb.length > 0) {
+          try {
+            await Promise.all(
+              missingInDb.map((m) =>
+                templatesApi.saveTemplate({ ...m, type: 'whatsapp' })
+              )
+            );
+            const refreshed = await templatesApi.getTemplates('whatsapp').catch(() => null);
+            finalSnippets = refreshed || rawDbSnippets;
+          } catch {
+            finalSnippets = rawDbSnippets;
+          }
+        } else {
+          finalSnippets = rawDbSnippets;
+        }
+
+        // Keep local cache matching MongoDB exactly
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('tdc_whatsapp_snippets_v2', JSON.stringify(finalSnippets));
+          localStorage.setItem('tdc_whatsapp_snippets_init_v2', 'true');
+        }
+      } else {
+        // Fallback only if offline / DB unreachable
+        finalSnippets = getStoredWhatsAppSnippets();
+      }
+
       setSnippets(finalSnippets);
-      if (finalSnippets.length > 0 && !selectedSnippet) {
-        setSelectedSnippet(finalSnippets[0]);
+      if (finalSnippets.length > 0) {
+        setSelectedSnippet((prev) => {
+          if (!prev) return finalSnippets[0];
+          const exists = finalSnippets.find((s) => s.id === prev.id);
+          return exists || finalSnippets[0];
+        });
       }
 
       setConnections(conns || []);

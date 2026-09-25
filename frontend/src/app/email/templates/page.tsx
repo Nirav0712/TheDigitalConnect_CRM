@@ -39,11 +39,51 @@ export default function EmailTemplatesPage() {
   const loadTemplates = async () => {
     setLoading(true);
     try {
-      const dbTemplates = await templatesApi.getTemplates('email').catch(() => getStoredEmailTemplates());
-      const finalTemplates = dbTemplates && dbTemplates.length > 0 ? dbTemplates : getStoredEmailTemplates();
+      const rawDbTemplates = await templatesApi.getTemplates('email').catch(() => null);
+      let finalTemplates: EmailTemplate[] = [];
+
+      if (rawDbTemplates && Array.isArray(rawDbTemplates)) {
+        // Auto-migrate any local templates that are missing in DB
+        const localTemplates = getStoredEmailTemplates();
+        const missingInDb = localTemplates.filter(
+          (lt) =>
+            !rawDbTemplates.some(
+              (db) => db.id === lt.id || db.name.toLowerCase() === lt.name.toLowerCase()
+            )
+        );
+
+        if (missingInDb.length > 0) {
+          try {
+            await Promise.all(
+              missingInDb.map((m) =>
+                templatesApi.saveTemplate({ ...m, type: 'email' })
+              )
+            );
+            const refreshed = await templatesApi.getTemplates('email').catch(() => null);
+            finalTemplates = refreshed || rawDbTemplates;
+          } catch {
+            finalTemplates = rawDbTemplates;
+          }
+        } else {
+          finalTemplates = rawDbTemplates;
+        }
+
+        // Keep local cache matching MongoDB exactly
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('tdc_email_templates_v2', JSON.stringify(finalTemplates));
+          localStorage.setItem('tdc_email_templates_init_v2', 'true');
+        }
+      } else {
+        finalTemplates = getStoredEmailTemplates();
+      }
+
       setTemplates(finalTemplates);
-      if (finalTemplates.length > 0 && !selectedTemplate) {
-        setSelectedTemplate(finalTemplates[0]);
+      if (finalTemplates.length > 0) {
+        setSelectedTemplate((prev) => {
+          if (!prev) return finalTemplates[0];
+          const exists = finalTemplates.find((t) => t.id === prev.id);
+          return exists || finalTemplates[0];
+        });
       }
     } catch {
       const local = getStoredEmailTemplates();

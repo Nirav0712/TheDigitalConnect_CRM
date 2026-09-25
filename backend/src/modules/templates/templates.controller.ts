@@ -6,33 +6,30 @@ import {
   Body,
   Param,
   Query,
-  Req,
 } from '@nestjs/common';
 import { TemplatesService } from './templates.service';
+import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 
-@Controller('templates')
+@Controller('api/templates')
 export class TemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
 
   @Get()
   async getTemplates(
     @Query('type') type: 'whatsapp' | 'email',
-    @Req() req: any,
+    @CurrentTenant() orgId: string,
   ) {
-    const orgId = req.organizationId || req.user?.organizationId || 'default-org';
     const targetType = type === 'email' ? 'email' : 'whatsapp';
     return this.templatesService.getTemplates(orgId, targetType);
   }
 
   @Post()
-  async saveTemplate(@Body() data: any, @Req() req: any) {
-    const orgId = req.organizationId || req.user?.organizationId || 'default-org';
+  async saveTemplate(@Body() data: any, @CurrentTenant() orgId: string) {
     return this.templatesService.saveTemplate(orgId, data);
   }
 
   @Delete(':id')
-  async deleteTemplate(@Param('id') id: string, @Req() req: any) {
-    const orgId = req.organizationId || req.user?.organizationId || 'default-org';
+  async deleteTemplate(@Param('id') id: string, @CurrentTenant() orgId: string) {
     return this.templatesService.deleteTemplate(orgId, id);
   }
 }
