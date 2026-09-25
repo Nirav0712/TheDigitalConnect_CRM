@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   MessageSquare,
   Search,
@@ -116,7 +117,13 @@ interface PendingAttachment {
   previewUrl?: string;
 }
 
-export default function WhatsAppInboxPage() {
+function WhatsAppInboxPageContent() {
+  const searchParams = useSearchParams();
+  const paramPhone = searchParams.get('phone') || '';
+  const paramName = searchParams.get('name') || '';
+  const paramContactId = searchParams.get('contactId') || '';
+  const cleanParamPhone = paramPhone.replace(/[^0-9]/g, '');
+
   const [connections, setConnections] = useState<any[]>([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
   const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'pinned'>('all');
@@ -179,6 +186,7 @@ export default function WhatsAppInboxPage() {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedConvRef = useRef<WhatsAppConv | null>(null);
   selectedConvRef.current = selectedConversation;
+  const hasHandledDeepLinkRef = useRef<string | null>(null);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -228,7 +236,7 @@ export default function WhatsAppInboxPage() {
         );
         setConversations(convs || []);
 
-        if (!selectedConvRef.current && convs && convs.length > 0 && !isBackground) {
+        if (!selectedConvRef.current && convs && convs.length > 0 && !isBackground && !cleanParamPhone) {
           handleSelectConversation(convs[0]);
         }
       } catch (err) {
@@ -239,11 +247,65 @@ export default function WhatsAppInboxPage() {
         if (!isBackground) setLoading(false);
       }
     },
-    [selectedConnectionId, search, filterTab],
+    [selectedConnectionId, search, filterTab, cleanParamPhone],
   );
+
+  // Deep-link from Contact page
+  useEffect(() => {
+    if (!cleanParamPhone) return;
+    if (hasHandledDeepLinkRef.current === cleanParamPhone && selectedConversation) return;
+
+    // 1. Try to find matching existing conversation
+    const matched = conversations.find((c) => {
+      const cPhone = String(c.customerPhoneNumber || '').replace(/[^0-9]/g, '');
+      const cContactId = c.contactId?._id || c.contactId;
+      return (
+        (paramContactId && String(cContactId) === String(paramContactId)) ||
+        (cPhone && (cPhone.includes(cleanParamPhone) || cleanParamPhone.includes(cPhone)))
+      );
+    });
+
+    if (matched) {
+      handleSelectConversation(matched);
+      hasHandledDeepLinkRef.current = cleanParamPhone;
+    } else if (!loading) {
+      // 2. No matching conversation found: initialize draft conversation so user can immediately message
+      const draftConv: WhatsAppConv = {
+        _id: `draft_${cleanParamPhone}`,
+        connectionId: selectedConnectionId || (connections[0]?._id ?? ''),
+        contactId: paramContactId || undefined,
+        customerPhoneNumber: cleanParamPhone,
+        customerName: paramName ? decodeURIComponent(paramName) : cleanParamPhone,
+        unreadCount: 0,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      setSelectedConversation(draftConv);
+      setMessages([]);
+      setConversations((prev) => {
+        if (
+          prev.some(
+            (c) =>
+              c._id === draftConv._id ||
+              (c.customerPhoneNumber && c.customerPhoneNumber.replace(/[^0-9]/g, '') === cleanParamPhone),
+          )
+        ) {
+          return prev;
+        }
+        return [draftConv, ...prev];
+      });
+      hasHandledDeepLinkRef.current = cleanParamPhone;
+    }
+  }, [cleanParamPhone, paramName, paramContactId, conversations, loading, selectedConnectionId, connections, selectedConversation]);
 
   // Load recent messages for selected conversation
   const loadMessagesForConversation = async (conv: WhatsAppConv, limit = 50) => {
+    if (conv._id.startsWith('draft_')) {
+      setMessages([]);
+      setLoadingMessages(false);
+      setHasMoreMessages(false);
+      return;
+    }
     setLoadingMessages(true);
     try {
       const msgs = await inboxApi.getWhatsAppMessages(conv._id, limit);
@@ -264,7 +326,7 @@ export default function WhatsAppInboxPage() {
 
   // Load older messages on upward scroll
   const loadOlderMessages = async () => {
-    if (!selectedConversation || loadingOlder || !hasMoreMessages || messages.length === 0) return;
+    if (!selectedConversation || selectedConversation._id.startsWith('draft_') || loadingOlder || !hasMoreMessages || messages.length === 0) return;
     setLoadingOlder(true);
     const oldestTimestamp = messages[0]?.timestamp;
     const previousScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
@@ -298,7 +360,7 @@ export default function WhatsAppInboxPage() {
 
   // Refresh active messages silently in background polling
   const refreshActiveMessages = useCallback(async () => {
-    if (!selectedConvRef.current) return;
+    if (!selectedConvRef.current || selectedConvRef.current._id.startsWith('draft_')) return;
     try {
       const latestMsgs = await inboxApi.getWhatsAppMessages(selectedConvRef.current._id, 50);
       if (latestMsgs) {
@@ -487,11 +549,64 @@ export default function WhatsAppInboxPage() {
     }, 30);
 
     try {
-      const saved = await inboxApi.replyWhatsApp(selectedConversation._id, payload);
-      setMessages((prev) =>
-        prev.map((m) => (m._id === tempId ? { ...saved, status: saved.status || 'sent' } : m)),
-      );
-      loadConversations(true);
+      if (selectedConversation._id.startsWith('draft_')) {
+        const activeConnId = String(
+          selectedConversation.connectionId?._id ||
+          selectedConversation.connectionId ||
+          selectedConnectionId ||
+          connections[0]?._id ||
+          ''
+        );
+
+        if (!activeConnId) {
+          throw new Error('No active WhatsApp connection selected. Please connect WhatsApp in WhatsApp Hub.');
+        }
+
+        let newConv: any;
+        if (payload.messageType === 'text') {
+          const res = await inboxApi.startWhatsAppConversation({
+            connectionId: activeConnId,
+            recipientPhoneNumber: selectedConversation.customerPhoneNumber,
+            customerName: selectedConversation.customerName || undefined,
+            messageBody: body,
+          });
+          newConv = res.conversation;
+          const initialMsg = res.message;
+          if (initialMsg) {
+            setMessages((prev) =>
+              prev.map((m) => (m._id === tempId ? { ...initialMsg, status: initialMsg.status || 'sent' } : m)),
+            );
+          }
+        } else {
+          const res = await inboxApi.startWhatsAppConversation({
+            connectionId: activeConnId,
+            recipientPhoneNumber: selectedConversation.customerPhoneNumber,
+            customerName: selectedConversation.customerName || undefined,
+          });
+          newConv = res.conversation;
+          if (newConv) {
+            const saved = await inboxApi.replyWhatsApp(newConv._id, payload);
+            setMessages((prev) =>
+              prev.map((m) => (m._id === tempId ? { ...saved, status: saved.status || 'sent' } : m)),
+            );
+          }
+        }
+
+        if (newConv) {
+          setSelectedConversation(newConv);
+          setConversations((prev) => [
+            newConv,
+            ...prev.filter((c) => c._id !== selectedConversation._id && c._id !== newConv._id),
+          ]);
+        }
+        loadConversations(true);
+      } else {
+        const saved = await inboxApi.replyWhatsApp(selectedConversation._id, payload);
+        setMessages((prev) =>
+          prev.map((m) => (m._id === tempId ? { ...saved, status: saved.status || 'sent' } : m)),
+        );
+        loadConversations(true);
+      }
     } catch (err) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -526,7 +641,30 @@ export default function WhatsAppInboxPage() {
     };
 
     try {
-      await inboxApi.replyWhatsApp(selectedConversation._id, payload);
+      let convId = selectedConversation._id;
+      if (convId.startsWith('draft_')) {
+        const activeConnId = String(
+          selectedConversation.connectionId?._id ||
+          selectedConversation.connectionId ||
+          selectedConnectionId ||
+          connections[0]?._id ||
+          ''
+        );
+        const res = await inboxApi.startWhatsAppConversation({
+          connectionId: activeConnId,
+          recipientPhoneNumber: selectedConversation.customerPhoneNumber,
+          customerName: selectedConversation.customerName || undefined,
+        });
+        if (res.conversation) {
+          convId = res.conversation._id;
+          setSelectedConversation(res.conversation);
+          setConversations((prev) => [
+            res.conversation,
+            ...prev.filter((c) => c._id !== selectedConversation._id && c._id !== res.conversation._id),
+          ]);
+        }
+      }
+      await inboxApi.replyWhatsApp(convId, payload);
       setSuccessToast('Location sent successfully');
       refreshActiveMessages();
     } catch (err) {
@@ -557,7 +695,30 @@ export default function WhatsAppInboxPage() {
     };
 
     try {
-      await inboxApi.replyWhatsApp(selectedConversation._id, payload);
+      let convId = selectedConversation._id;
+      if (convId.startsWith('draft_')) {
+        const activeConnId = String(
+          selectedConversation.connectionId?._id ||
+          selectedConversation.connectionId ||
+          selectedConnectionId ||
+          connections[0]?._id ||
+          ''
+        );
+        const res = await inboxApi.startWhatsAppConversation({
+          connectionId: activeConnId,
+          recipientPhoneNumber: selectedConversation.customerPhoneNumber,
+          customerName: selectedConversation.customerName || undefined,
+        });
+        if (res.conversation) {
+          convId = res.conversation._id;
+          setSelectedConversation(res.conversation);
+          setConversations((prev) => [
+            res.conversation,
+            ...prev.filter((c) => c._id !== selectedConversation._id && c._id !== res.conversation._id),
+          ]);
+        }
+      }
+      await inboxApi.replyWhatsApp(convId, payload);
       setSuccessToast('Contact card shared');
       setContactName('');
       setContactPhone('');
@@ -2126,3 +2287,18 @@ export default function WhatsAppInboxPage() {
     </div>
   );
 }
+
+export default function WhatsAppInboxPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-400">
+          <RefreshCw className="w-8 h-8 animate-spin text-emerald-500" />
+        </div>
+      }
+    >
+      <WhatsAppInboxPageContent />
+    </Suspense>
+  );
+}
+

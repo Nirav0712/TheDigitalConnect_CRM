@@ -53,43 +53,17 @@ export function ContactActionButtons({
   const hasEmail = Boolean(cleanEmail && cleanEmail.includes('@'));
 
   // ================= 1. WHATSAPP ACTION =================
-  const handleWhatsAppClick = async (e: React.MouseEvent) => {
+  const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!hasWhatsApp) {
       if (onShowToast) onShowToast('WhatsApp number is not available.', 'info');
       return;
     }
 
-    setCheckingWhatsApp(true);
-    try {
-      // Priority 1: Check if an existing Imprenta CRM conversation exists for this contact
-      const conversations = await inboxApi.getWhatsAppConversations(undefined, cleanWhatsAppDigits);
-      const existingConv = (conversations || []).find((c: any) => {
-        const cPhone = String(c.customerPhoneNumber || '').replace(/[^0-9]/g, '');
-        const cContactId = c.contactId?._id || c.contactId;
-        return (
-          (contact._id && String(cContactId) === String(contact._id)) ||
-          (cPhone && (cPhone.includes(cleanWhatsAppDigits) || cleanWhatsAppDigits.includes(cPhone)))
-        );
-      });
-
-      if (existingConv) {
-        if (onShowToast) onShowToast(`Opening conversation with ${displayName}...`, 'info');
-        router.push(`/inbox/whatsapp?phone=${encodeURIComponent(cleanWhatsAppDigits)}`);
-        return;
-      }
-
-      // Priority 2: Fallback to safe wa.me link in new tab without auto-sending
-      if (onShowToast) onShowToast(`Opening WhatsApp chat for ${displayName}...`, 'info');
-      const waUrl = `https://wa.me/${cleanWhatsAppDigits}`;
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      // Fallback directly to wa.me if conversation search is unavailable
-      const waUrl = `https://wa.me/${cleanWhatsAppDigits}`;
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-    } finally {
-      setCheckingWhatsApp(false);
-    }
+    if (onShowToast) onShowToast(`Opening WhatsApp Inbox for ${displayName}...`, 'info');
+    router.push(
+      `/whatsapp/inbox?phone=${encodeURIComponent(cleanWhatsAppDigits)}&name=${encodeURIComponent(displayName)}&contactId=${encodeURIComponent(contact._id || '')}`
+    );
   };
 
   // ================= 2. EMAIL ACTION =================
