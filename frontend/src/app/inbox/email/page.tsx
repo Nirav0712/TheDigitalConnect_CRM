@@ -48,8 +48,14 @@ import {
   FolderInput,
   Bookmark,
   Check,
+  FileCode,
 } from 'lucide-react';
 import { inboxApi, emailApi, extractErrorMessage } from '../../../lib/api';
+import {
+  EmailTemplate,
+  getStoredEmailTemplates,
+  interpolateTemplateVariables,
+} from '../../../lib/templates';
 
 const PREDEFINED_LABELS = [
   { name: 'Work', color: 'bg-blue-500 text-blue-500' },
@@ -135,6 +141,39 @@ export default function EmailInboxPage() {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showLabelMenu, setShowLabelMenu] = useState(false);
   const [showSelectMenu, setShowSelectMenu] = useState(false);
+
+  // Email Template State
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+
+  useEffect(() => {
+    if (isComposeOpen || isReplying) {
+      setEmailTemplates(getStoredEmailTemplates());
+    }
+  }, [isComposeOpen, isReplying]);
+
+  const handleApplyComposeTemplate = (tmplId: string) => {
+    if (!tmplId) return;
+    const tmpl = emailTemplates.find((t) => t.id === tmplId);
+    if (!tmpl) return;
+
+    const recipientName = composeTo ? composeTo.split('@')[0] : 'there';
+    const contactCtx = {
+      name: recipientName,
+      firstName: recipientName,
+      fullName: recipientName,
+      email: composeTo,
+    };
+
+    const mergedSubject = interpolateTemplateVariables(tmpl.subject, contactCtx);
+    const rawBody =
+      tmpl.bodyText ||
+      tmpl.bodyHtml.replace(/<br\s*[\/]?>/gi, '\n').replace(/<\/p><p>/gi, '\n\n').replace(/<[^>]+>/g, '');
+    const mergedBody = interpolateTemplateVariables(rawBody, contactCtx);
+
+    setComposeSubject(mergedSubject);
+    setComposeBody(mergedBody);
+    showToast(`Template "${tmpl.name}" applied!`, 'success');
+  };
 
   const selectedConvRef = useRef<any | null>(null);
   selectedConvRef.current = selectedConversation;
@@ -1589,6 +1628,27 @@ export default function EmailInboxPage() {
                   </button>
                 </div>
               )}
+
+              {/* Template Selector */}
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs">
+                <span className="text-slate-400 w-12 flex items-center gap-1">
+                  <FileCode className="w-3.5 h-3.5 text-blue-500" />
+                </span>
+                <select
+                  onChange={(e) => handleApplyComposeTemplate(e.target.value)}
+                  defaultValue=""
+                  className="bg-transparent text-xs text-blue-600 dark:text-blue-400 font-medium focus:outline-none flex-1 cursor-pointer"
+                >
+                  <option value="" className="text-slate-800 dark:text-slate-200">
+                    -- Insert Email Template --
+                  </option>
+                  {emailTemplates.map((t) => (
+                    <option key={t.id} value={t.id} className="text-slate-800 dark:text-slate-200">
+                      [{t.category}] {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Subject */}
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs">

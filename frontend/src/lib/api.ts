@@ -198,6 +198,7 @@ export const whatsappApi = {
   syncTemplates: (id: string) => api.post(`/whatsapp/connections/${id}/sync-templates`).then((r) => r.data),
   deleteConnection: (id: string) => api.delete(`/whatsapp/connections/${id}`).then((r) => r.data),
   getTemplates: (connectionId?: string) => api.get('/whatsapp/templates', { params: { connectionId } }).then((r) => r.data),
+  deleteTemplate: (id: string) => api.delete(`/whatsapp/templates/${id}`).then((r) => r.data),
   sendMessage: (data: any) => api.post('/whatsapp/send', data).then((r) => r.data),
 };
 

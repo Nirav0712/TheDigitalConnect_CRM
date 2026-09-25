@@ -58,6 +58,12 @@ export class WhatsAppController {
     return this.whatsappService.getTemplates(connectionId);
   }
 
+  @Delete('templates/:id')
+  async deleteTemplate(@Param('id') id: string) {
+    await this.whatsappService.deleteTemplate(id);
+    return { success: true, message: 'Template deleted successfully' };
+  }
+
   @Post('send')
   async sendMessage(@Body() dto: SendWhatsAppMessageDto) {
     return this.whatsappService.sendMessage(dto);

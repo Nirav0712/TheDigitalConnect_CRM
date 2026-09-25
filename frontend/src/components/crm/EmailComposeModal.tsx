@@ -1,13 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, X, Send, ExternalLink, Loader2, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
+import { Mail, X, Send, ExternalLink, Loader2, AlertCircle, CheckCircle2, Shield, FileCode, Sparkles } from 'lucide-react';
 import { emailApi, extractErrorMessage } from '../../lib/api';
+import {
+  EmailTemplate,
+  getStoredEmailTemplates,
+  interpolateTemplateVariables,
+} from '../../lib/templates';
 
 export interface EmailComposeModalProps {
   contact: {
     _id?: string;
     fullName?: string;
+    firstName?: string;
+    lastName?: string;
     email?: string;
     alternateEmail?: string;
     company?: string;
@@ -35,6 +42,10 @@ export function EmailComposeModal({
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Template State
+  const [availableTemplates, setAvailableTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+
   useEffect(() => {
     if (isOpen) {
       const primaryEmail = contact?.email || contact?.alternateEmail || '';
@@ -45,6 +56,11 @@ export function EmailComposeModal({
       setBccEmail('');
       setShowCcBcc(false);
       setErrorMsg(null);
+      setSelectedTemplateId('');
+
+      // Load templates from storage
+      const tmpls = getStoredEmailTemplates();
+      setAvailableTemplates(tmpls);
 
       // Load connected SMTP email accounts
       setLoadingAccounts(true);
@@ -63,6 +79,30 @@ export function EmailComposeModal({
         .finally(() => setLoadingAccounts(false));
     }
   }, [isOpen, contact]);
+
+  const handleApplyTemplate = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+
+    const tmpl = availableTemplates.find((t) => t.id === templateId);
+    if (!tmpl) return;
+
+    const contactCtx = {
+      name: contact?.fullName,
+      fullName: contact?.fullName,
+      firstName: contact?.firstName || (contact?.fullName ? contact.fullName.split(' ')[0] : ''),
+      lastName: contact?.lastName,
+      company: contact?.company,
+      email: toEmail,
+    };
+
+    const mergedSubject = interpolateTemplateVariables(tmpl.subject, contactCtx);
+    const rawBody = tmpl.bodyText || tmpl.bodyHtml.replace(/<br\s*[\/]?>/gi, '\n').replace(/<\/p><p>/gi, '\n\n').replace(/<[^>]+>/g, '');
+    const mergedBody = interpolateTemplateVariables(rawBody, contactCtx);
+
+    setSubject(mergedSubject);
+    setBody(mergedBody);
+  };
 
   if (!isOpen || !contact) return null;
 
@@ -250,9 +290,39 @@ export function EmailComposeModal({
             </div>
           )}
 
+          {/* Template Selector */}
+          <div className="p-3 bg-blue-50/60 dark:bg-blue-950/40 rounded-xl border border-blue-200/80 dark:border-blue-800/60 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                <FileCode className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                Apply Email Template
+              </label>
+              <a
+                href="/email/templates"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+              >
+                Manage Templates <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            </div>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => handleApplyTemplate(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+            >
+              <option value="">-- Select an email template to auto-fill --</option>
+              {availableTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  [{t.category}] {t.name} - {t.subject}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Subject */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Subject</label>
+            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Subject *</label>
             <input
               type="text"
               required

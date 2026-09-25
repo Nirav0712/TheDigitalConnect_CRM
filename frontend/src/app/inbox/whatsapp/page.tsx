@@ -36,10 +36,16 @@ import {
   Reply,
   Maximize2,
   File,
+  FileCode,
   Film,
   HelpCircle,
 } from 'lucide-react';
 import { inboxApi, whatsappApi, contactsApi, extractErrorMessage } from '../../../lib/api';
+import {
+  WhatsAppSnippet,
+  getStoredWhatsAppSnippets,
+  interpolateTemplateVariables,
+} from '../../../lib/templates';
 
 // Supported Message types
 export type WhatsAppMessageType =
@@ -170,6 +176,37 @@ function WhatsAppInboxPageContent() {
   const [newChatMessage, setNewChatMessage] = useState('');
   const [availableContacts, setAvailableContacts] = useState<any[]>([]);
   const [startingChat, setStartingChat] = useState(false);
+
+  // Template Picker State
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [availableSnippets, setAvailableSnippets] = useState<WhatsAppSnippet[]>([]);
+  const [templateSearch, setTemplateSearch] = useState('');
+
+  // Load templates when modal opens
+  useEffect(() => {
+    if (showTemplateModal) {
+      const stored = getStoredWhatsAppSnippets();
+      setAvailableSnippets(stored);
+    }
+  }, [showTemplateModal]);
+
+  const handleSelectTemplate = (snippet: WhatsAppSnippet) => {
+    const customerName = selectedConversation?.customerName || '';
+    const phone = selectedConversation?.customerPhoneNumber || '';
+    const company = selectedConversation?.contactId?.company || '';
+
+    const interpolated = interpolateTemplateVariables(snippet.bodyText, {
+      name: customerName,
+      fullName: customerName,
+      firstName: customerName ? customerName.split(' ')[0] : '',
+      phone,
+      company,
+    });
+
+    setReplyText((prev) => (prev ? `${prev}\n${interpolated}` : interpolated));
+    setShowTemplateModal(false);
+    setSuccessToast(`Template "${snippet.name}" inserted!`);
+  };
 
   // Audio Playback Map: msgId -> HTMLAudioElement
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -1941,6 +1978,18 @@ function WhatsAppInboxPageContent() {
                   <Paperclip className="w-4 h-4" />
                 </button>
 
+                {/* Template Picker Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(true)}
+                  className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors ${
+                    showTemplateModal ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700' : ''
+                  }`}
+                  title="Insert WhatsApp Template / Quick Reply"
+                >
+                  <FileCode className="w-4 h-4" />
+                </button>
+
                 {/* Text Area Composer */}
                 <textarea
                   rows={1}
@@ -2281,6 +2330,99 @@ function WhatsAppInboxPageContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Template Picker Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">
+                  <FileCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Insert WhatsApp Template</h3>
+                  <p className="text-xs text-slate-500">Pick a pre-formatted template or quick reply</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTemplateModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search templates by name or text..."
+                  value={templateSearch}
+                  onChange={(e) => setTemplateSearch(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+              <a
+                href="/whatsapp/templates"
+                className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 whitespace-nowrap transition-colors"
+              >
+                + Manage Templates
+              </a>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-3 flex-1">
+              {availableSnippets
+                .filter(
+                  (s) =>
+                    !templateSearch.trim() ||
+                    s.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                    s.bodyText.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                    s.category.toLowerCase().includes(templateSearch.toLowerCase()),
+                )
+                .map((snip) => (
+                  <div
+                    key={snip.id}
+                    onClick={() => handleSelectTemplate(snip)}
+                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-all cursor-pointer group space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
+                        {snip.name}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {snip.category}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
+                      {interpolateTemplateVariables(snip.bodyText, {
+                        name: selectedConversation?.customerName,
+                        fullName: selectedConversation?.customerName,
+                        phone: selectedConversation?.customerPhoneNumber,
+                      })}
+                    </p>
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex gap-1 flex-wrap">
+                        {snip.variables.map((v) => (
+                          <span
+                            key={v}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                          >
+                            {`{{${v}}}`}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Insert Template →
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}

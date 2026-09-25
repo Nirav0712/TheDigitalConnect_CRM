@@ -384,6 +384,14 @@ export class WhatsAppService implements OnModuleInit {
     return this.templateModel.find(filter).sort({ name: 1 }).exec();
   }
 
+  async deleteTemplate(id: string): Promise<void> {
+    try {
+      await this.templateModel.findByIdAndDelete(id);
+    } catch (err: any) {
+      this.logger.warn(`Failed to delete template ${id}: ${err.message}`);
+    }
+  }
+
   async sendMessage(dto: SendWhatsAppMessageDto): Promise<any> {
     const connection = await this.findConnectionById(dto.connectionId, true);
 
