@@ -289,8 +289,8 @@ export default function WhatsAppTemplatesPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="lg:col-span-2">
               {snippets.length === 0 ? (
                 <div className="p-12 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                   <FileCode className="w-10 h-10 text-slate-400 mx-auto" />
@@ -306,12 +306,12 @@ export default function WhatsAppTemplatesPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max items-start content-start">
                   {snippets.map((snip) => (
                     <div
                       key={snip.id}
                       onClick={() => setSelectedSnippet(snip)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer relative group h-fit ${
                         selectedSnippet?.id === snip.id
                           ? 'bg-blue-50/50 dark:bg-blue-950/40 border-blue-500 shadow-sm ring-1 ring-blue-500'
                           : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs'

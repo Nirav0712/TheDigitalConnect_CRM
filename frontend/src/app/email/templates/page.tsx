@@ -133,10 +133,10 @@ export default function EmailTemplatesPage() {
       )}
 
       {/* Templates Grid & Live Preview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max items-start content-start">
           {templates.length === 0 ? (
-            <div className="col-span-2 p-12 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="col-span-full p-12 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
               <Mail className="w-10 h-10 text-slate-400 mx-auto" />
               <div className="text-sm font-bold text-slate-800 dark:text-slate-100">No Email Templates Found</div>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -154,9 +154,9 @@ export default function EmailTemplatesPage() {
               <div
                 key={tmpl.id}
                 onClick={() => setSelectedTemplate(tmpl)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer relative group h-fit ${
                   selectedTemplate?.id === tmpl.id
-                    ? 'bg-blue-50/50 dark:bg-blue-950/40 border-blue-500 ring-1 ring-blue-500'
+                    ? 'bg-blue-50/50 dark:bg-blue-950/40 border-blue-500 ring-1 ring-blue-500 shadow-sm'
                     : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs'
                 }`}
               >
@@ -179,7 +179,7 @@ export default function EmailTemplatesPage() {
                   Subject: <span className="font-normal text-slate-500">{tmpl.subject}</span>
                 </div>
                 <div
-                  className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 prose-sm"
+                  className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 max-h-24 overflow-hidden bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 prose-sm"
                   dangerouslySetInnerHTML={{ __html: tmpl.bodyHtml }}
                 />
               </div>
