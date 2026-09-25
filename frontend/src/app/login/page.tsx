@@ -88,19 +88,19 @@ function LoginForm() {
       <div className="w-full max-w-[440px] z-10 my-6">
         {/* Brand Logo Container */}
         <div className="flex flex-col items-center mb-7 text-center">
-          <div className="relative group p-3.5 rounded-2xl bg-[#0c1a2e]/80 border border-cyan-500/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-md mb-4.5 transition-all duration-300 hover:border-cyan-500/40">
+          <div className="relative group px-6 py-3.5 rounded-2xl bg-[#0c1a2e]/90 border border-blue-500/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-md mb-4.5 transition-all duration-300 hover:border-blue-500/40">
             {/* Glow behind logo */}
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-600/10 rounded-2xl blur-md -z-10 group-hover:blur-lg transition-all" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-rose-500/10 to-blue-600/10 rounded-2xl blur-md -z-10 group-hover:blur-lg transition-all" />
             
             <img
               src="/logo.png"
               alt="The Crystal Engage"
-              className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_4px_12px_rgba(14,165,233,0.25)]"
+              className="h-12 md:h-14 w-auto max-w-[260px] object-contain drop-shadow-[0_4px_12px_rgba(30,58,138,0.35)]"
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium tracking-wide shadow-inner">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/70 border border-blue-500/30 text-blue-200 text-[11px] font-medium tracking-wide shadow-inner">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
             <span>Enterprise CRM & Marketing Suite</span>
           </div>
         </div>
@@ -108,7 +108,7 @@ function LoginForm() {
         {/* Glassmorphic Login Card */}
         <div className="relative bg-[#0b1626]/90 border border-slate-800/90 hover:border-slate-700/80 rounded-3xl p-7 md:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur-2xl transition-all duration-300 ring-1 ring-white/5">
           {/* Subtle Top Gradient Line */}
-          <div className="absolute top-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
+          <div className="absolute top-0 left-8 right-8 h-[2px] bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
 
           {/* Form Header */}
           <div className="mb-6 text-center">

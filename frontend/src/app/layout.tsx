@@ -8,11 +8,12 @@ export const metadata: Metadata = {
   description: 'The Crystal Engage CRM - Group of Chamunda Enterprise helps businesses manage contacts, leads, follow-ups, campaigns, and customer relationships in one platform.',
   icons: {
     icon: [
-      { url: '/favicon.png?v=6', type: 'image/png' },
-      { url: '/logo.png?v=6', type: 'image/png' },
+      { url: '/favicon.png?v=7', type: 'image/png' },
+      { url: '/emblem.png?v=7', type: 'image/png' },
+      { url: '/logo.png?v=7', type: 'image/png' },
     ],
-    shortcut: '/favicon.png?v=6',
-    apple: '/favicon.png?v=6',
+    shortcut: '/favicon.png?v=7',
+    apple: '/favicon.png?v=7',
   },
 };
 
@@ -24,9 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
-        <link rel="icon" href="/favicon.png?v=6" type="image/png" />
-        <link rel="shortcut icon" href="/favicon.png?v=6" type="image/png" />
-        <link rel="apple-touch-icon" href="/favicon.png?v=6" />
+        <link rel="icon" href="/favicon.png?v=7" type="image/png" />
+        <link rel="shortcut icon" href="/favicon.png?v=7" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon.png?v=7" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

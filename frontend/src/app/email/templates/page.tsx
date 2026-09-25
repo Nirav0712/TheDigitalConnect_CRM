@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Copy,
   Trash2,
+  Pencil,
   X,
   ExternalLink,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [newTmpl, setNewTmpl] = useState({
     name: '',
@@ -40,7 +42,19 @@ export default function EmailTemplatesPage() {
     }
   }, []);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleOpenEdit = (tmpl: EmailTemplate, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingTemplate(tmpl);
+    setNewTmpl({
+      name: tmpl.name,
+      subject: tmpl.subject,
+      category: tmpl.category,
+      bodyText: tmpl.bodyText || '',
+    });
+    setIsNewModalOpen(true);
+  };
+
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTmpl.name.trim() || !newTmpl.subject.trim()) return;
 
@@ -52,8 +66,8 @@ export default function EmailTemplatesPage() {
       ? `<p>${newTmpl.bodyText.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`
       : `<p>Hello {{firstName}},</p><p>Thank you for connecting with us at {{company}}.</p><p>Best regards,<br/>The Crystal Engage Team</p>`;
 
-    const created: EmailTemplate = {
-      id: `em_${Date.now()}`,
+    const tmplToSave: EmailTemplate = {
+      id: editingTemplate ? editingTemplate.id : `em_${Date.now()}`,
       name: newTmpl.name.trim(),
       subject: newTmpl.subject.trim(),
       category: newTmpl.category,
@@ -62,12 +76,13 @@ export default function EmailTemplatesPage() {
       variables: variables.length > 0 ? variables : ['firstName', 'company'],
     };
 
-    const updated = saveStoredEmailTemplate(created);
+    const updated = saveStoredEmailTemplate(tmplToSave);
     setTemplates(updated);
-    setSelectedTemplate(created);
+    setSelectedTemplate(tmplToSave);
     setIsNewModalOpen(false);
+    setEditingTemplate(null);
     setNewTmpl({ name: '', subject: '', category: 'Marketing', bodyText: '' });
-    setSuccessToast('Email template created successfully!');
+    setSuccessToast(editingTemplate ? 'Email template updated successfully!' : 'Email template created successfully!');
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
@@ -167,6 +182,13 @@ export default function EmailTemplatesPage() {
                       {tmpl.category}
                     </span>
                     <button
+                      onClick={(e) => handleOpenEdit(tmpl, e)}
+                      title="Edit template"
+                      className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={(e) => handleDelete(tmpl, e)}
                       title="Delete template"
                       className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
@@ -195,12 +217,20 @@ export default function EmailTemplatesPage() {
               Email Render Simulator
             </h2>
             {selectedTemplate && (
-              <button
-                onClick={() => handleDelete(selectedTemplate)}
-                className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 hover:underline"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Delete
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenEdit(selectedTemplate)}
+                  className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 hover:underline font-medium"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedTemplate)}
+                  className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 hover:underline"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
             )}
           </div>
 
@@ -251,29 +281,34 @@ export default function EmailTemplatesPage() {
         </div>
       </div>
 
-      {/* CREATE TEMPLATE MODAL */}
+      {/* CREATE / EDIT TEMPLATE MODAL */}
       {isNewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400">
-                  <FileCode className="w-5 h-5" />
+                  <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Create Email Template</h3>
-                  <p className="text-xs text-slate-500">Add a reusable email layout with merge tags</p>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    {editingTemplate ? 'Edit Email Template' : 'Create Email Template'}
+                  </h3>
+                  <p className="text-xs text-slate-500">HTML & plain text reusable email marketing template</p>
                 </div>
               </div>
               <button
-                onClick={() => setIsNewModalOpen(false)}
+                onClick={() => {
+                  setIsNewModalOpen(false);
+                  setEditingTemplate(null);
+                }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="p-5 space-y-4">
+            <form onSubmit={handleSave} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Template Name *
@@ -366,7 +401,10 @@ export default function EmailTemplatesPage() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsNewModalOpen(false)}
+                  onClick={() => {
+                    setIsNewModalOpen(false);
+                    setEditingTemplate(null);
+                  }}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
                 >
                   Cancel
@@ -375,7 +413,15 @@ export default function EmailTemplatesPage() {
                   type="submit"
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl shadow-2xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Save Template
+                  {editingTemplate ? (
+                    <>
+                      <Pencil className="w-3.5 h-3.5" /> Update Template
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" /> Save Template
+                    </>
+                  )}
                 </button>
               </div>
             </form>

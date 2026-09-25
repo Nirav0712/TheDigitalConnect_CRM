@@ -48,8 +48,8 @@ export function Navbar() {
         </button>
 
         <div className="flex items-center gap-1.5 sm:gap-2 truncate">
-          <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-800 whitespace-nowrap">
-            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+          <span className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 border border-blue-200/70 dark:border-blue-800 whitespace-nowrap">
+            <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse shrink-0" />
             <span className="hidden xs:inline">The Crystal Engage</span>
             <span className="xs:hidden">TCE</span>
           </span>

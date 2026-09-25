@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   QrCode,
   Trash2,
+  Pencil,
   X,
   ExternalLink,
 } from 'lucide-react';
@@ -44,8 +45,9 @@ export default function WhatsAppTemplatesPage() {
   const [snippets, setSnippets] = useState<WhatsAppSnippet[]>([]);
   const [selectedSnippet, setSelectedSnippet] = useState<WhatsAppSnippet | null>(null);
 
-  // Create Modal state
+  // Create / Edit Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSnippet, setEditingSnippet] = useState<WhatsAppSnippet | null>(null);
   const [newSnippetName, setNewSnippetName] = useState('');
   const [newSnippetCategory, setNewSnippetCategory] = useState('MARKETING');
   const [newSnippetBody, setNewSnippetBody] = useState('');
@@ -103,7 +105,16 @@ export default function WhatsAppTemplatesPage() {
     }
   };
 
-  const handleCreateSnippet = (e: React.FormEvent) => {
+  const handleOpenEdit = (snip: WhatsAppSnippet, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingSnippet(snip);
+    setNewSnippetName(snip.name);
+    setNewSnippetCategory(snip.category);
+    setNewSnippetBody(snip.bodyText);
+    setShowCreateModal(true);
+  };
+
+  const handleSaveSnippet = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSnippetName.trim() || !newSnippetBody.trim()) {
       alert('Please provide a snippet name and template message body.');
@@ -114,22 +125,23 @@ export default function WhatsAppTemplatesPage() {
     const matches = newSnippetBody.match(/\{\{([^}]+)\}\}/g) || [];
     const variables = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, '').trim()))).filter(Boolean);
 
-    const newSnippet: WhatsAppSnippet = {
-      id: `snip_${Date.now()}`,
+    const snippetToSave: WhatsAppSnippet = {
+      id: editingSnippet ? editingSnippet.id : `snip_${Date.now()}`,
       name: newSnippetName.trim(),
       category: newSnippetCategory,
       bodyText: newSnippetBody.trim(),
       variables: variables.length > 0 ? variables : ['name'],
     };
 
-    const updated = saveStoredWhatsAppSnippet(newSnippet);
+    const updated = saveStoredWhatsAppSnippet(snippetToSave);
     setSnippets(updated);
-    setSelectedSnippet(newSnippet);
+    setSelectedSnippet(snippetToSave);
     setShowCreateModal(false);
+    setEditingSnippet(null);
     setNewSnippetName('');
     setNewSnippetCategory('MARKETING');
     setNewSnippetBody('');
-    setSuccessToast('WhatsApp template created successfully!');
+    setSuccessToast(editingSnippet ? 'WhatsApp template updated successfully!' : 'WhatsApp template created successfully!');
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
@@ -326,6 +338,13 @@ export default function WhatsAppTemplatesPage() {
                             {snip.category}
                           </span>
                           <button
+                            onClick={(e) => handleOpenEdit(snip, e)}
+                            title="Edit template"
+                            className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={(e) => handleDeleteSnippet(snip, e)}
                             title="Delete template"
                             className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
@@ -351,12 +370,20 @@ export default function WhatsAppTemplatesPage() {
                   Template Simulator
                 </h2>
                 {selectedSnippet && (
-                  <button
-                    onClick={() => handleDeleteSnippet(selectedSnippet)}
-                    className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 hover:underline"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenEdit(selectedSnippet)}
+                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 hover:underline font-medium"
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSnippet(selectedSnippet)}
+                      className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 hover:underline"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -580,7 +607,7 @@ export default function WhatsAppTemplatesPage() {
         </div>
       )}
 
-      {/* CREATE TEMPLATE MODAL */}
+      {/* CREATE / EDIT TEMPLATE MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
@@ -590,19 +617,24 @@ export default function WhatsAppTemplatesPage() {
                   <FileCode className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Create WhatsApp Template</h3>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    {editingSnippet ? 'Edit WhatsApp Template' : 'Create WhatsApp Template'}
+                  </h3>
                   <p className="text-xs text-slate-500">Reusable message template for WhatsApp inbox & campaigns</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingSnippet(null);
+                }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSnippet} className="p-5 space-y-4">
+            <form onSubmit={handleSaveSnippet} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Template Name *
@@ -670,7 +702,10 @@ export default function WhatsAppTemplatesPage() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setEditingSnippet(null);
+                  }}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
                 >
                   Cancel
@@ -679,7 +714,15 @@ export default function WhatsAppTemplatesPage() {
                   type="submit"
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl shadow-2xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Save Template
+                  {editingSnippet ? (
+                    <>
+                      <Pencil className="w-3.5 h-3.5" /> Update Template
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" /> Save Template
+                    </>
+                  )}
                 </button>
               </div>
             </form>

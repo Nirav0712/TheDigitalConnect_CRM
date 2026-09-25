@@ -168,15 +168,15 @@ export function Sidebar() {
         {/* Brand Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl bg-slate-900/80 dark:bg-slate-800 border border-slate-700/60 flex items-center justify-center p-1 shadow-sm flex-shrink-0 overflow-hidden">
-              <img src="/logo.png" alt="TDC" className="w-full h-full object-contain" />
+            <div className="w-9 h-9 rounded-xl bg-slate-900/90 dark:bg-slate-800 border border-slate-700/60 flex items-center justify-center p-1 shadow-sm flex-shrink-0 overflow-hidden">
+              <img src="/emblem.png" alt="TCE" className="w-full h-full object-contain" />
             </div>
             {(!collapsed || mobileOpen) && (
               <div className="min-w-0">
                 <div className="font-bold text-slate-900 dark:text-white text-xs tracking-tight truncate">
                   The Crystal Engage
                 </div>
-                <div className="text-[9px] font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider truncate">
+                <div className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider truncate">
                   GROUP OF CHAMUNDA ENT.
                 </div>
               </div>
