@@ -6,10 +6,22 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function getBackendTarget(): { protocol: string; hostname: string; port: number; basePath: string } {
+  const customBackend = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (customBackend) {
+    try {
+      const u = new URL(customBackend);
+      return {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port ? parseInt(u.port, 10) : u.protocol === 'https:' ? 443 : 80,
+        basePath: u.pathname.replace(/\/$/, '') || '/api',
+      };
+    } catch {}
+  }
   if (process.env.NODE_ENV === 'development') {
     return { protocol: 'http:', hostname: 'localhost', port: 4000, basePath: '/api' };
   }
-  return { protocol: 'https:', hostname: 'backendcrm.imprenta.in', port: 443, basePath: '/api' };
+  return { protocol: 'http:', hostname: '127.0.0.1', port: 4000, basePath: '/api' };
 }
 
 async function executeProxy(req: NextRequest, { params }: { params: { path: string[] } }) {
@@ -26,7 +38,7 @@ async function executeProxy(req: NextRequest, { params }: { params: { path: stri
       // Build safe forward headers
       const headers: Record<string, string> = {
         'Host': target.hostname,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Imprenta-CRM-Proxy/1.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TheDigitalConnect-CRM-Proxy/1.0',
         'Accept': 'application/json, text/plain, */*',
         'Connection': 'close',
       };
@@ -45,13 +57,13 @@ async function executeProxy(req: NextRequest, { params }: { params: { path: stri
         }
       });
 
-      // Read request body if applicable
+      // Read request body binary-safely for multipart spreadsheets & JSON payloads
       let bodyBuffer: Buffer | null = null;
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         try {
-          const text = await req.text();
-          if (text && text.length > 0) {
-            bodyBuffer = Buffer.from(text, 'utf8');
+          const arrayBuffer = await req.arrayBuffer();
+          if (arrayBuffer && arrayBuffer.byteLength > 0) {
+            bodyBuffer = Buffer.from(arrayBuffer);
             headers['Content-Length'] = String(bodyBuffer.length);
           }
         } catch (e: any) {
@@ -69,7 +81,7 @@ async function executeProxy(req: NextRequest, { params }: { params: { path: stri
           method: req.method,
           headers,
           rejectUnauthorized: false, // Prevents TLS certificate chain rejection on serverless
-          timeout: 30000,
+          timeout: 300000, // 5 minutes for large file parsing & database imports
         },
         (backendRes) => {
           const chunks: Buffer[] = [];
@@ -111,7 +123,7 @@ async function executeProxy(req: NextRequest, { params }: { params: { path: stri
         proxyReq.destroy();
         return resolve(
           NextResponse.json(
-            { success: false, message: 'Backend connection timed out' },
+            { success: false, message: 'Backend connection timed out (operation took longer than 5 minutes)' },
             { status: 504 }
           )
         );

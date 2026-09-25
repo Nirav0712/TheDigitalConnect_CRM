@@ -14,7 +14,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 120000,
 });
 
 // Automatically attach authentication credentials from localStorage if present
@@ -175,11 +175,16 @@ export const customFieldsApi = {
 // Imports API
 export const importsApi = {
   upload: (formData: FormData) =>
-    api.post('/imports/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }).then((r) => r.data),
-  preview: (data: any) => api.post('/imports/preview', data).then((r) => r.data),
-  execute: (data: any) => api.post('/imports/execute', data).then((r) => r.data),
+    api
+      .post('/imports/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000, // 5 minutes for uploading & parsing large Excel/CSV workbooks
+      })
+      .then((r) => r.data),
+  preview: (data: any) =>
+    api.post('/imports/preview', data, { timeout: 180000 }).then((r) => r.data),
+  execute: (data: any) =>
+    api.post('/imports/execute', data, { timeout: 600000 }).then((r) => r.data),
   getHistory: () => api.get('/imports/history').then((r) => r.data),
   getJob: (id: string) => api.get(`/imports/history/${id}`).then((r) => r.data),
   getMappings: () => api.get('/imports/mappings').then((r) => r.data),
