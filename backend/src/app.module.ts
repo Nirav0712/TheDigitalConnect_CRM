@@ -14,6 +14,7 @@ import { SendingModule } from './modules/sending/sending.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { TemplatesModule } from './modules/templates/templates.module';
 import { AppController } from './app.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { TenantAuthGuard } from './common/guards/tenant-auth.guard';
@@ -38,6 +39,7 @@ import { TenantAuthGuard } from './common/guards/tenant-auth.guard';
     SendingModule,
     SettingsModule,
     CrmModule,
+    TemplatesModule,
   ],
   controllers: [AppController],
   providers: [

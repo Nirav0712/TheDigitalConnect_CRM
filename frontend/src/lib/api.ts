@@ -344,3 +344,14 @@ export const settingsApi = {
   updateTheme: (data: any) => api.patch('/settings/theme', data).then((r) => r.data),
   resetTheme: () => api.post('/settings/theme/reset').then((r) => r.data),
 };
+
+// Centralized Templates API (Synchronized Across All Devices & PCs)
+export const templatesApi = {
+  getTemplates: (type: 'whatsapp' | 'email') =>
+    api.get('/templates', { params: { type } }).then((r) => r.data),
+  saveTemplate: (data: any) =>
+    api.post('/templates', data).then((r) => r.data),
+  deleteTemplate: (id: string) =>
+    api.delete(`/templates/${id}`).then((r) => r.data),
+};
+

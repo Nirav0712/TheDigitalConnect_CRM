@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, X, Send, ExternalLink, Loader2, AlertCircle, CheckCircle2, Shield, FileCode, Sparkles } from 'lucide-react';
-import { emailApi, extractErrorMessage } from '../../lib/api';
+import { emailApi, templatesApi, extractErrorMessage } from '../../lib/api';
 import {
   EmailTemplate,
   getStoredEmailTemplates,
@@ -58,9 +58,17 @@ export function EmailComposeModal({
       setErrorMsg(null);
       setSelectedTemplateId('');
 
-      // Load templates from storage
-      const tmpls = getStoredEmailTemplates();
-      setAvailableTemplates(tmpls);
+      // Load templates from server with local fallback
+      templatesApi
+        .getTemplates('email')
+        .then((tmpls) => {
+          if (Array.isArray(tmpls) && tmpls.length > 0) {
+            setAvailableTemplates(tmpls);
+          } else {
+            setAvailableTemplates(getStoredEmailTemplates());
+          }
+        })
+        .catch(() => setAvailableTemplates(getStoredEmailTemplates()));
 
       // Load connected SMTP email accounts
       setLoadingAccounts(true);

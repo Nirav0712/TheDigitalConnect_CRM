@@ -22,7 +22,7 @@ import {
   X,
   ExternalLink,
 } from 'lucide-react';
-import { whatsappApi, extractErrorMessage } from '../../../lib/api';
+import { whatsappApi, templatesApi, extractErrorMessage } from '../../../lib/api';
 import {
   WhatsAppSnippet,
   getStoredWhatsAppSnippets,
@@ -56,16 +56,18 @@ export default function WhatsAppTemplatesPage() {
     setLoading(true);
     setErrorBanner(null);
     try {
-      const storedSnippets = getStoredWhatsAppSnippets();
-      setSnippets(storedSnippets);
-      if (storedSnippets.length > 0 && !selectedSnippet) {
-        setSelectedSnippet(storedSnippets[0]);
-      }
-
-      const [conns, tmpls] = await Promise.all([
+      const [dbSnippets, conns, tmpls] = await Promise.all([
+        templatesApi.getTemplates('whatsapp').catch(() => getStoredWhatsAppSnippets()),
         whatsappApi.getConnections().catch(() => []),
         whatsappApi.getTemplates(selectedConnectionId || undefined).catch(() => []),
       ]);
+
+      const finalSnippets = dbSnippets && dbSnippets.length > 0 ? dbSnippets : getStoredWhatsAppSnippets();
+      setSnippets(finalSnippets);
+      if (finalSnippets.length > 0 && !selectedSnippet) {
+        setSelectedSnippet(finalSnippets[0]);
+      }
+
       setConnections(conns || []);
       setTemplates(tmpls || []);
 
@@ -114,7 +116,7 @@ export default function WhatsAppTemplatesPage() {
     setShowCreateModal(true);
   };
 
-  const handleSaveSnippet = (e: React.FormEvent) => {
+  const handleSaveSnippet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSnippetName.trim() || !newSnippetBody.trim()) {
       alert('Please provide a snippet name and template message body.');
@@ -133,9 +135,19 @@ export default function WhatsAppTemplatesPage() {
       variables: variables.length > 0 ? variables : ['name'],
     };
 
-    const updated = saveStoredWhatsAppSnippet(snippetToSave);
-    setSnippets(updated);
-    setSelectedSnippet(snippetToSave);
+    try {
+      const saved = await templatesApi.saveTemplate({ ...snippetToSave, type: 'whatsapp' });
+      const updatedList = await templatesApi.getTemplates('whatsapp').catch(() => []);
+      const finalUpdated = updatedList.length > 0 ? updatedList : [saved];
+      setSnippets(finalUpdated);
+      setSelectedSnippet(saved);
+      saveStoredWhatsAppSnippet(saved);
+    } catch {
+      const updated = saveStoredWhatsAppSnippet(snippetToSave);
+      setSnippets(updated);
+      setSelectedSnippet(snippetToSave);
+    }
+
     setShowCreateModal(false);
     setEditingSnippet(null);
     setNewSnippetName('');
@@ -145,15 +157,26 @@ export default function WhatsAppTemplatesPage() {
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  const handleDeleteSnippet = (snip: WhatsAppSnippet, e?: React.MouseEvent) => {
+  const handleDeleteSnippet = async (snip: WhatsAppSnippet, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!window.confirm(`Are you sure you want to delete template "${snip.name}"?`)) return;
 
-    const updated = deleteStoredWhatsAppSnippet(snip.id);
-    setSnippets(updated);
-    if (selectedSnippet?.id === snip.id) {
-      setSelectedSnippet(updated[0] || null);
+    try {
+      await templatesApi.deleteTemplate(snip.id);
+      const updatedList = await templatesApi.getTemplates('whatsapp').catch(() => []);
+      setSnippets(updatedList);
+      if (selectedSnippet?.id === snip.id) {
+        setSelectedSnippet(updatedList[0] || null);
+      }
+      deleteStoredWhatsAppSnippet(snip.id);
+    } catch {
+      const updated = deleteStoredWhatsAppSnippet(snip.id);
+      setSnippets(updated);
+      if (selectedSnippet?.id === snip.id) {
+        setSelectedSnippet(updated[0] || null);
+      }
     }
+
     setSuccessToast('WhatsApp template deleted successfully.');
     setTimeout(() => setSuccessToast(null), 3000);
   };

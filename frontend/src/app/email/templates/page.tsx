@@ -14,6 +14,7 @@ import {
   X,
   ExternalLink,
 } from 'lucide-react';
+import { templatesApi, extractErrorMessage } from '../../../lib/api';
 import {
   EmailTemplate,
   getStoredEmailTemplates,
@@ -26,6 +27,7 @@ export default function EmailTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [loading, setLoading] = useState(true);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [newTmpl, setNewTmpl] = useState({
     name: '',
@@ -34,12 +36,28 @@ export default function EmailTemplatesPage() {
     bodyText: '',
   });
 
-  useEffect(() => {
-    const stored = getStoredEmailTemplates();
-    setTemplates(stored);
-    if (stored.length > 0) {
-      setSelectedTemplate(stored[0]);
+  const loadTemplates = async () => {
+    setLoading(true);
+    try {
+      const dbTemplates = await templatesApi.getTemplates('email').catch(() => getStoredEmailTemplates());
+      const finalTemplates = dbTemplates && dbTemplates.length > 0 ? dbTemplates : getStoredEmailTemplates();
+      setTemplates(finalTemplates);
+      if (finalTemplates.length > 0 && !selectedTemplate) {
+        setSelectedTemplate(finalTemplates[0]);
+      }
+    } catch {
+      const local = getStoredEmailTemplates();
+      setTemplates(local);
+      if (local.length > 0 && !selectedTemplate) {
+        setSelectedTemplate(local[0]);
+      }
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadTemplates();
   }, []);
 
   const handleOpenEdit = (tmpl: EmailTemplate, e?: React.MouseEvent) => {
@@ -54,7 +72,7 @@ export default function EmailTemplatesPage() {
     setIsNewModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTmpl.name.trim() || !newTmpl.subject.trim()) return;
 
@@ -76,9 +94,19 @@ export default function EmailTemplatesPage() {
       variables: variables.length > 0 ? variables : ['firstName', 'company'],
     };
 
-    const updated = saveStoredEmailTemplate(tmplToSave);
-    setTemplates(updated);
-    setSelectedTemplate(tmplToSave);
+    try {
+      const saved = await templatesApi.saveTemplate({ ...tmplToSave, type: 'email' });
+      const updatedList = await templatesApi.getTemplates('email').catch(() => []);
+      const finalUpdated = updatedList.length > 0 ? updatedList : [saved];
+      setTemplates(finalUpdated);
+      setSelectedTemplate(saved);
+      saveStoredEmailTemplate(saved);
+    } catch {
+      const updated = saveStoredEmailTemplate(tmplToSave);
+      setTemplates(updated);
+      setSelectedTemplate(tmplToSave);
+    }
+
     setIsNewModalOpen(false);
     setEditingTemplate(null);
     setNewTmpl({ name: '', subject: '', category: 'Marketing', bodyText: '' });
@@ -86,15 +114,26 @@ export default function EmailTemplatesPage() {
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  const handleDelete = (tmpl: EmailTemplate, e?: React.MouseEvent) => {
+  const handleDelete = async (tmpl: EmailTemplate, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!window.confirm(`Are you sure you want to delete template "${tmpl.name}"?`)) return;
 
-    const updated = deleteStoredEmailTemplate(tmpl.id);
-    setTemplates(updated);
-    if (selectedTemplate?.id === tmpl.id) {
-      setSelectedTemplate(updated[0] || null);
+    try {
+      await templatesApi.deleteTemplate(tmpl.id);
+      const updatedList = await templatesApi.getTemplates('email').catch(() => []);
+      setTemplates(updatedList);
+      if (selectedTemplate?.id === tmpl.id) {
+        setSelectedTemplate(updatedList[0] || null);
+      }
+      deleteStoredEmailTemplate(tmpl.id);
+    } catch {
+      const updated = deleteStoredEmailTemplate(tmpl.id);
+      setTemplates(updated);
+      if (selectedTemplate?.id === tmpl.id) {
+        setSelectedTemplate(updated[0] || null);
+      }
     }
+
     setSuccessToast('Email template deleted successfully.');
     setTimeout(() => setSuccessToast(null), 3000);
   };

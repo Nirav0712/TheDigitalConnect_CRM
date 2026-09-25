@@ -50,7 +50,7 @@ import {
   Check,
   FileCode,
 } from 'lucide-react';
-import { inboxApi, emailApi, extractErrorMessage } from '../../../lib/api';
+import { inboxApi, emailApi, templatesApi, extractErrorMessage } from '../../../lib/api';
 import {
   EmailTemplate,
   getStoredEmailTemplates,
@@ -147,7 +147,16 @@ export default function EmailInboxPage() {
 
   useEffect(() => {
     if (isComposeOpen || isReplying) {
-      setEmailTemplates(getStoredEmailTemplates());
+      templatesApi
+        .getTemplates('email')
+        .then((tmpls) => {
+          if (Array.isArray(tmpls) && tmpls.length > 0) {
+            setEmailTemplates(tmpls);
+          } else {
+            setEmailTemplates(getStoredEmailTemplates());
+          }
+        })
+        .catch(() => setEmailTemplates(getStoredEmailTemplates()));
     }
   }, [isComposeOpen, isReplying]);
 

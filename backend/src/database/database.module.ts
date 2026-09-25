@@ -22,6 +22,7 @@ import { Lead, LeadSchema } from './schemas/lead.schema';
 import { Activity, ActivitySchema } from './schemas/activity.schema';
 import { FollowUp, FollowUpSchema } from './schemas/follow-up.schema';
 import { User, UserSchema } from './schemas/user.schema';
+import { CrmTemplate, CrmTemplateSchema } from './schemas/crm-template.schema';
 
 const MODELS = [
   { name: Contact.name, schema: ContactSchema },
@@ -45,6 +46,7 @@ const MODELS = [
   { name: Activity.name, schema: ActivitySchema },
   { name: FollowUp.name, schema: FollowUpSchema },
   { name: User.name, schema: UserSchema },
+  { name: CrmTemplate.name, schema: CrmTemplateSchema },
 ];
 
 const logger = new Logger('DatabaseModule');
