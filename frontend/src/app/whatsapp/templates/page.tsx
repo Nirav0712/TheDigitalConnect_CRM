@@ -334,7 +334,7 @@ export default function WhatsAppTemplatesPage() {
                           </button>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 font-sans">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 font-sans whitespace-pre-wrap break-words">
                         {snip.bodyText}
                       </p>
                     </div>

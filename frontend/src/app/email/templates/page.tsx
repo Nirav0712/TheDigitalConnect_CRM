@@ -179,7 +179,7 @@ export default function EmailTemplatesPage() {
                   Subject: <span className="font-normal text-slate-500">{tmpl.subject}</span>
                 </div>
                 <div
-                  className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 max-h-24 overflow-hidden bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 prose-sm"
+                  className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 break-words space-y-1"
                   dangerouslySetInnerHTML={{ __html: tmpl.bodyHtml }}
                 />
               </div>
