@@ -15,8 +15,10 @@ export interface ContactActionButtonsProps {
     whatsappNumber?: string;
     email?: string;
     alternateEmail?: string;
+    company?: string;
   };
   onOpenEmail?: (contact: any) => void;
+  onOpenWhatsApp?: (contact: any) => void;
   onShowToast?: (message: string, type?: 'info' | 'success' | 'error') => void;
   size?: 'sm' | 'md' | 'lg';
   showLabels?: boolean;
@@ -25,6 +27,7 @@ export interface ContactActionButtonsProps {
 export function ContactActionButtons({
   contact,
   onOpenEmail,
+  onOpenWhatsApp,
   onShowToast,
   size = 'sm',
   showLabels = false,
@@ -60,10 +63,14 @@ export function ContactActionButtons({
       return;
     }
 
-    if (onShowToast) onShowToast(`Opening WhatsApp Inbox for ${displayName}...`, 'info');
-    router.push(
-      `/whatsapp/inbox?phone=${encodeURIComponent(cleanWhatsAppDigits)}&name=${encodeURIComponent(displayName)}&contactId=${encodeURIComponent(contact._id || '')}`
-    );
+    if (onOpenWhatsApp) {
+      onOpenWhatsApp(contact);
+    } else {
+      if (onShowToast) onShowToast(`Opening WhatsApp Inbox for ${displayName}...`, 'info');
+      router.push(
+        `/whatsapp/inbox?phone=${encodeURIComponent(cleanWhatsAppDigits)}&name=${encodeURIComponent(displayName)}&contactId=${encodeURIComponent(contact._id || '')}`
+      );
+    }
   };
 
   // ================= 2. EMAIL ACTION =================
