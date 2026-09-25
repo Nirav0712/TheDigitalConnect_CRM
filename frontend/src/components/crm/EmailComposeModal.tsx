@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, X, Send, ExternalLink, Loader2, AlertCircle, CheckCircle2, Shield, FileCode, Sparkles } from 'lucide-react';
-import { emailApi, templatesApi, crmApi, extractErrorMessage } from '../../lib/api';
+import { emailApi, templatesApi, extractErrorMessage } from '../../lib/api';
 import {
   EmailTemplate,
   getStoredEmailTemplates,
@@ -15,8 +15,6 @@ export interface EmailComposeModalProps {
     fullName?: string;
     firstName?: string;
     lastName?: string;
-    phoneNumber?: string;
-    whatsappNumber?: string;
     email?: string;
     alternateEmail?: string;
     company?: string;
@@ -24,7 +22,6 @@ export interface EmailComposeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (msg: string) => void;
-  onActivityLogged?: () => void;
 }
 
 export function EmailComposeModal({
@@ -32,7 +29,6 @@ export function EmailComposeModal({
   isOpen,
   onClose,
   onSuccess,
-  onActivityLogged,
 }: EmailComposeModalProps) {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -141,11 +137,6 @@ export function EmailComposeModal({
     setErrorMsg(null);
 
     try {
-      const selectedTmpl = availableTemplates.find((t) => t.id === selectedTemplateId);
-      const templateName = selectedTmpl?.name || (selectedTemplateId ? 'Template Email' : 'Custom Email');
-      const contactDisplayName = contact?.fullName?.trim() || `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim() || toEmail.trim();
-      const firstName = contact?.firstName?.trim() || (contactDisplayName ? contactDisplayName.split(' ')[0] : 'Client');
-
       if (accounts.length > 0) {
         const ccList = ccEmail.split(',').map((s) => s.trim()).filter(Boolean);
         const bccList = bccEmail.split(',').map((s) => s.trim()).filter(Boolean);
@@ -160,32 +151,6 @@ export function EmailComposeModal({
           bcc: bccList,
         });
 
-        // Record CRM Activity
-        if (contact?._id) {
-          crmApi.createActivity({
-            contactId: contact._id,
-            type: 'email',
-            title: `Email sent to ${contactDisplayName} (${toEmail.trim()}) [Template: ${templateName}]`,
-            description: body,
-            metadata: {
-              templateId: selectedTemplateId || '',
-              templateName,
-              recipientEmail: toEmail.trim(),
-              recipientName: contactDisplayName,
-              firstName,
-              recipientPhone: contact.phoneNumber || contact.whatsappNumber || '',
-              company: contact.company || '',
-              subject: subject.trim(),
-              bodySnippet: body.slice(0, 160),
-              channel: 'email',
-              status: 'sent',
-            },
-            createdBy: 'User',
-          }).then(() => {
-            if (onActivityLogged) onActivityLogged();
-          }).catch(() => {});
-        }
-
         if (onSuccess) {
           onSuccess(`Email successfully sent to ${toEmail.trim()}`);
         }
@@ -193,33 +158,6 @@ export function EmailComposeModal({
       } else {
         // If no SMTP account configured, trigger safe mailto fallback
         handleOpenMailto();
-
-        // Record CRM Activity
-        if (contact?._id) {
-          crmApi.createActivity({
-            contactId: contact._id,
-            type: 'email',
-            title: `Email initiated to ${contactDisplayName} (${toEmail.trim()}) [Template: ${templateName}]`,
-            description: body,
-            metadata: {
-              templateId: selectedTemplateId || '',
-              templateName,
-              recipientEmail: toEmail.trim(),
-              recipientName: contactDisplayName,
-              firstName,
-              recipientPhone: contact.phoneNumber || contact.whatsappNumber || '',
-              company: contact.company || '',
-              subject: subject.trim(),
-              bodySnippet: body.slice(0, 160),
-              channel: 'email',
-              status: 'sent',
-            },
-            createdBy: 'User',
-          }).then(() => {
-            if (onActivityLogged) onActivityLogged();
-          }).catch(() => {});
-        }
-
         onClose();
       }
     } catch (err) {

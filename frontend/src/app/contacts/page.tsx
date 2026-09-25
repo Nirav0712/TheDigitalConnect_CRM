@@ -38,8 +38,6 @@ import {
 import { contactsApi, customFieldsApi, crmApi, extractErrorMessage } from '../../lib/api';
 import { ContactActionButtons } from '../../components/crm/ContactActionButtons';
 import { EmailComposeModal } from '../../components/crm/EmailComposeModal';
-import { WhatsAppComposeModal } from '../../components/crm/WhatsAppComposeModal';
-import { LiveCommunicationSidebar } from '../../components/crm/LiveCommunicationSidebar';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<any[]>([]);
@@ -63,16 +61,13 @@ export default function ContactsPage() {
   const [filterCustomVal, setFilterCustomVal] = useState('');
   const [exporting, setExporting] = useState(false);
 
-  // Modals & Communication Panels
+  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any | null>(null);
   const [detailContact, setDetailContact] = useState<any | null>(null);
   const [detailActivities, setDetailActivities] = useState<any[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [emailModalContact, setEmailModalContact] = useState<any | null>(null);
-  const [whatsappModalContact, setWhatsappModalContact] = useState<any | null>(null);
-  const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
-  const [activityRefreshTrigger, setActivityRefreshTrigger] = useState(0);
 
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'error' } | null>(null);
@@ -409,20 +404,6 @@ export default function ContactsPage() {
             Export CSV
           </button>
 
-          <button
-            onClick={() => setIsActivitySidebarOpen(!isActivitySidebarOpen)}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all shadow-2xs cursor-pointer ${
-              isActivitySidebarOpen
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-500/20'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
-            }`}
-            title="Toggle live outbound sent communications stream"
-          >
-            <Activity className={`w-3.5 h-3.5 ${isActivitySidebarOpen ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
-            <span>Outbound Sent Log</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          </button>
-
           <Link
             href="/contacts/import"
             className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs transition-colors"
@@ -741,7 +722,6 @@ export default function ContactsPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           <ContactActionButtons
                             contact={c}
-                            onOpenWhatsApp={(contact) => setWhatsappModalContact(contact)}
                             onOpenEmail={(contact) => setEmailModalContact(contact)}
                             onShowToast={showToast}
                             size="sm"
@@ -1344,43 +1324,12 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* QUICK WHATSAPP COMPOSE & TEMPLATE DIALOG */}
-      <WhatsAppComposeModal
-        contact={whatsappModalContact}
-        isOpen={Boolean(whatsappModalContact)}
-        onClose={() => setWhatsappModalContact(null)}
-        onSuccess={(msg) => {
-          showToast(msg, 'success');
-          setActivityRefreshTrigger((p) => p + 1);
-          setIsActivitySidebarOpen(true);
-        }}
-        onActivityLogged={() => {
-          setActivityRefreshTrigger((p) => p + 1);
-        }}
-      />
-
       {/* QUICK EMAIL COMPOSE DIALOG */}
       <EmailComposeModal
         contact={emailModalContact}
         isOpen={Boolean(emailModalContact)}
         onClose={() => setEmailModalContact(null)}
-        onSuccess={(msg) => {
-          showToast(msg, 'success');
-          setActivityRefreshTrigger((p) => p + 1);
-          setIsActivitySidebarOpen(true);
-        }}
-        onActivityLogged={() => {
-          setActivityRefreshTrigger((p) => p + 1);
-        }}
-      />
-
-      {/* OUTBOUND SENT COMMUNICATION STREAM SIDEBAR */}
-      <LiveCommunicationSidebar
-        isOpen={isActivitySidebarOpen}
-        onClose={() => setIsActivitySidebarOpen(false)}
-        refreshTrigger={activityRefreshTrigger}
-        onComposeWhatsApp={(contact) => setWhatsappModalContact(contact)}
-        onComposeEmail={(contact) => setEmailModalContact(contact)}
+        onSuccess={(msg) => showToast(msg, 'success')}
       />
     </div>
   );
