@@ -399,365 +399,153 @@ export default function ImportWizardPage() {
       )}
 
       {/* STEP 2: DYNAMIC COLUMN MAPPING & PRESETS */}
-      {step === 2 && parsedPayload && (() => {
-        const headers = parsedPayload.headers || [];
-        const mappedHeaders = headers.filter((h) => columnMapping[h] && columnMapping[h] !== '__ignore__');
-        const ignoredHeaders = headers.filter((h) => columnMapping[h] === '__ignore__');
-        const unmappedHeaders = headers.filter((h) => !columnMapping[h]);
-
-        const filteredHeaders = headers.filter((h) => {
-          const matchesSearch =
-            !columnSearch.trim() ||
-            h.toLowerCase().includes(columnSearch.toLowerCase()) ||
-            String(parsedPayload.previewRows[0]?.[h] || '').toLowerCase().includes(columnSearch.toLowerCase());
-
-          if (!matchesSearch) return false;
-          if (mappingFilter === 'mapped') return Boolean(columnMapping[h] && columnMapping[h] !== '__ignore__');
-          if (mappingFilter === 'unmapped') return !columnMapping[h];
-          return true;
-        });
-
-        const handleAutoMapAll = () => {
-          setColumnMapping((prev) => ({
-            ...prev,
-            ...(parsedPayload.suggestedMapping || {}),
-          }));
-        };
-
-        const handleIgnoreAllUnmapped = () => {
-          setColumnMapping((prev) => {
-            const next = { ...prev };
-            headers.forEach((h) => {
-              if (!next[h]) {
-                next[h] = '__ignore__';
-              }
-            });
-            return next;
-          });
-        };
-
-        const handleResetMappings = () => {
-          setColumnMapping(parsedPayload.suggestedMapping || {});
-        };
-
-        return (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-6">
-            {/* Header & Quick Action Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-5 gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Map File Columns to CRM Fields</span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                    Step 2 of 5
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Match each column from <strong className="text-slate-800 dark:text-slate-200">{parsedPayload.filename}</strong> ({parsedPayload.totalRows.toLocaleString()} rows) to the right CRM contact attribute.
-                </p>
-              </div>
-
-              {/* Status Counters */}
-              <div className="flex items-center flex-wrap gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  <Check className="w-3.5 h-3.5" />
-                  {mappedHeaders.length} Mapped
-                </span>
-                {unmappedHeaders.length > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    {unmappedHeaders.length} Unmapped
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                    All Assigned
-                  </span>
-                )}
-                {ignoredHeaders.length > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 text-[11px]">
-                    {ignoredHeaders.length} Skipped
-                  </span>
-                )}
-              </div>
+      {step === 2 && parsedPayload && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-6">
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 gap-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Map File Columns to Contact Fields</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                File: <strong className="text-slate-800 dark:text-slate-200">{parsedPayload.filename}</strong> (
+                {parsedPayload.totalRows.toLocaleString()} rows, {parsedPayload.headers.length} columns detected)
+              </p>
             </div>
 
-            {/* Quick Automation Tools & Filter Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
-              {/* Filter Tabs & Search */}
-              <div className="flex items-center flex-wrap gap-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={columnSearch}
-                    onChange={(e) => setColumnSearch(e.target.value)}
-                    placeholder="Search column name..."
-                    className="pl-8 pr-3 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 w-44"
-                  />
-                  {columnSearch && (
-                    <button
-                      onClick={() => setColumnSearch('')}
-                      className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900 text-xs">
-                  <button
-                    onClick={() => setMappingFilter('all')}
-                    className={`px-3 py-1 font-medium ${
-                      mappingFilter === 'all'
-                        ? 'bg-slate-800 text-white dark:bg-emerald-600'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    All ({headers.length})
-                  </button>
-                  <button
-                    onClick={() => setMappingFilter('mapped')}
-                    className={`px-3 py-1 font-medium border-l border-slate-200 dark:border-slate-700 ${
-                      mappingFilter === 'mapped'
-                        ? 'bg-slate-800 text-white dark:bg-emerald-600'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Mapped ({mappedHeaders.length})
-                  </button>
-                  <button
-                    onClick={() => setMappingFilter('unmapped')}
-                    className={`px-3 py-1 font-medium border-l border-slate-200 dark:border-slate-700 ${
-                      mappingFilter === 'unmapped'
-                        ? 'bg-slate-800 text-white dark:bg-emerald-600'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Unmapped ({unmappedHeaders.length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Helper Actions */}
-              <div className="flex items-center flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleAutoMapAll}
-                  title="Automatically map columns that match standard contact fields"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs"
+            {/* Presets Manager */}
+            <div className="flex items-center gap-2">
+              {savedPresets.length > 0 && (
+                <select
+                  onChange={(e) => {
+                    const preset = savedPresets.find((p) => p._id === e.target.value);
+                    if (preset) handleApplyPreset(preset);
+                  }}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Auto-Map Matches
-                </button>
-
-                {unmappedHeaders.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleIgnoreAllUnmapped}
-                    title="Skip all currently unmapped columns"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
-                  >
-                    Skip Unmapped ({unmappedHeaders.length})
-                  </button>
-                )}
-
-                {savedPresets.length > 0 && (
-                  <select
-                    onChange={(e) => {
-                      const preset = savedPresets.find((p) => p._id === e.target.value);
-                      if (preset) handleApplyPreset(preset);
-                    }}
-                    className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
-                  >
-                    <option value="">Load Preset...</option>
-                    {savedPresets.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setIsSavingPreset(!isSavingPreset)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  <Bookmark className="w-3.5 h-3.5" />
-                  Save
-                </button>
-              </div>
-            </div>
-
-            {/* Preset Name Input Drawer */}
-            {isSavingPreset && (
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                <input
-                  type="text"
-                  value={presetNameInput}
-                  onChange={(e) => setPresetNameInput(e.target.value)}
-                  placeholder="Preset Name (e.g. Apollo / JustDial Export)..."
-                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-                <button
-                  type="button"
-                  onClick={handleSavePreset}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-                >
-                  Save Preset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSavingPreset(false)}
-                  className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-
-            {/* Clear, Intuitive Column Mapping Rows */}
-            <div className="space-y-2.5">
-              <div className="hidden sm:grid grid-cols-12 gap-4 px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                <div className="col-span-5">File Column & Sample Data</div>
-                <div className="col-span-1 text-center">Direction</div>
-                <div className="col-span-6">Destination CRM Contact Field</div>
-              </div>
-
-              {filteredHeaders.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                  No columns found matching &ldquo;{columnSearch}&rdquo; in &ldquo;{mappingFilter}&rdquo; filter.
-                </div>
-              ) : (
-                filteredHeaders.map((header, idx) => {
-                  const currentValue = columnMapping[header] || '';
-                  const sampleValue = parsedPayload.previewRows[0]?.[header] || '';
-                  const isMapped = Boolean(currentValue && currentValue !== '__ignore__');
-                  const isSkipped = currentValue === '__ignore__';
-                  const isUnmapped = !currentValue;
-
-                  // Find matched label
-                  const matchedStandard = STANDARD_FIELDS.find((f) => f.key === currentValue);
-                  const matchedCustom = newCustomFields.find((f) => f.key === currentValue);
-                  const matchedLabel = matchedStandard?.label || (matchedCustom ? `${matchedCustom.label} (Custom)` : currentValue);
-
-                  return (
-                    <div
-                      key={header}
-                      className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
-                        isMapped
-                          ? 'border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20'
-                          : isSkipped
-                          ? 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 opacity-70'
-                          : 'border-amber-200 dark:border-amber-800/80 bg-amber-50/20 dark:bg-amber-950/20'
-                      }`}
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center">
-                        {/* 1. Source Header & Sample Value */}
-                        <div className="sm:col-span-5 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5 text-slate-400" />
-                              {header}
-                            </span>
-                            {isMapped && (
-                              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded">
-                                ✓ Mapped
-                              </span>
-                            )}
-                            {isSkipped && (
-                              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                ⊘ Skipped
-                              </span>
-                            )}
-                            {isUnmapped && (
-                              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/80 px-1.5 py-0.5 rounded">
-                                ⚠ Unmapped
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
-                            <span className="text-slate-400">Sample:</span>
-                            <span className="font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded truncate max-w-xs">
-                              {String(sampleValue || '(empty cell)')}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 2. Direction Arrow */}
-                        <div className="hidden sm:flex sm:col-span-1 justify-center text-slate-400">
-                          <ArrowRight className={`w-4 h-4 ${isMapped ? 'text-emerald-500' : isSkipped ? 'text-slate-300' : 'text-amber-400'}`} />
-                        </div>
-
-                        {/* 3. Destination Selector & Quick Custom Field */}
-                        <div className="sm:col-span-6 flex items-center gap-2">
-                          <select
-                            value={currentValue}
-                            onChange={(e) => handleMappingChange(header, e.target.value)}
-                            className={`flex-1 px-3 py-2 text-xs rounded-xl border bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all ${
-                              isMapped
-                                ? 'border-emerald-300 dark:border-emerald-700'
-                                : isSkipped
-                                ? 'border-slate-200 dark:border-slate-700 text-slate-400'
-                                : 'border-amber-300 dark:border-amber-700'
-                            }`}
-                          >
-                            <option value="">-- Choose Contact Field --</option>
-                            <option value="__ignore__">❌ Do not import (Skip this column)</option>
-                            <optgroup label="⚡ Standard Contact Fields">
-                              {STANDARD_FIELDS.map((f) => (
-                                <option key={f.key} value={f.key}>
-                                  {f.label}
-                                </option>
-                              ))}
-                            </optgroup>
-                            {newCustomFields.length > 0 && (
-                              <optgroup label="✨ Custom Fields">
-                                {newCustomFields.map((cf) => (
-                                  <option key={cf.key} value={cf.key}>
-                                    {cf.label} (Custom)
-                                  </option>
-                                ))}
-                              </optgroup>
-                            )}
-                          </select>
-
-                          <button
-                            type="button"
-                            onClick={() => handleAddCustomField(header)}
-                            title="Import this column as a new custom field attribute"
-                            className="px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1 font-medium transition-colors flex-shrink-0 shadow-2xs"
-                          >
-                            <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span className="hidden md:inline text-[11px]">New Field</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                  <option value="">Load Saved Mapping Preset...</option>
+                  {savedPresets.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
               )}
-            </div>
 
-            {/* Bottom Nav Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
-                onClick={() => setStep(1)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                type="button"
+                onClick={() => setIsSavingPreset(!isSavingPreset)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
               >
-                Back to Upload
-              </button>
-              <button
-                onClick={handleProceedToPreview}
-                disabled={previewLoading || mappedHeaders.length === 0}
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow-xs transition-colors"
-              >
-                {previewLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                {previewLoading ? 'Validating Records...' : `Continue to Preview (${mappedHeaders.length} Mapped)`}
+                <Bookmark className="w-3.5 h-3.5" />
+                Save Preset
               </button>
             </div>
           </div>
-        );
-      })()}
+
+          {/* Preset Name Input Drawer */}
+          {isSavingPreset && (
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
+              <input
+                type="text"
+                value={presetNameInput}
+                onChange={(e) => setPresetNameInput(e.target.value)}
+                placeholder="Preset Name (e.g. Apollo Leads Export)..."
+                className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+              <button
+                type="button"
+                onClick={handleSavePreset}
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSavingPreset(false)}
+                className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Mapping Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {parsedPayload.headers.map((header) => {
+              const currentValue = columnMapping[header] || '';
+              const sampleValue = parsedPayload.previewRows[0]?.[header] || '';
+
+              return (
+                <div
+                  key={header}
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/50 flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">{header}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-xs mt-0.5">
+                        Sample: <span className="font-mono text-slate-700 dark:text-slate-300">{String(sampleValue || '(empty)')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={currentValue}
+                      onChange={(e) => handleMappingChange(header, e.target.value)}
+                      className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+                    >
+                      <option value="">-- Select Contact Field --</option>
+                      <option value="__ignore__">❌ Do not import (Ignore column)</option>
+                      <optgroup label="Standard Fields">
+                        {STANDARD_FIELDS.map((f) => (
+                          <option key={f.key} value={f.key}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                      {newCustomFields.length > 0 && (
+                        <optgroup label="New Custom Fields">
+                          {newCustomFields.map((cf) => (
+                            <option key={cf.key} value={cf.key}>
+                              {cf.label} (Custom)
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddCustomField(header)}
+                      title="Create dynamic custom field from this header"
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs flex items-center gap-1 flex-shrink-0 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline text-[11px]">New Field</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              onClick={() => setStep(1)}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleProceedToPreview}
+              disabled={previewLoading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs transition-colors"
+            >
+              {previewLoading ? 'Validating Records...' : 'Continue to Preview & Validation'}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* STEP 3: DATA PREVIEW & VALIDATION */}
       {step === 3 && previewResult && (
