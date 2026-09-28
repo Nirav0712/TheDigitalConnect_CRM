@@ -24,12 +24,18 @@ async function bootstrap() {
   // 1. Create native Express instance
   const server = express();
 
+  // Set top-level body limits on native Express instance
+  server.use(express.json({ limit: '100mb' }));
+  server.use(express.urlencoded({ limit: '100mb', extended: true }));
+
   // Top-level CORS and OPTIONS preflight handler for Hostinger / LiteSpeed reverse proxy
   server.use((req, res, next) => {
     const origin = (req.headers.origin as string) || '';
     const allowed = [
       'https://crm.imprenta.in',
       'https://imprenta-crm-lake.vercel.app',
+      'https://engage24.in',
+      'https://www.engage24.in',
       'http://localhost:3000',
       'http://localhost:4000',
       'http://127.0.0.1:3000',
@@ -37,7 +43,12 @@ async function bootstrap() {
     ];
 
     const normalized = origin.replace(/\/$/, '').toLowerCase();
-    if (origin && (allowed.includes(normalized) || /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin))) {
+    if (
+      origin &&
+      (allowed.includes(normalized) ||
+        normalized.includes('engage24.in') ||
+        /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin))
+    ) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
@@ -160,8 +171,8 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Set payload size limits
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
   // Initialize all NestJS routes, controllers, and modules
   await app.init();

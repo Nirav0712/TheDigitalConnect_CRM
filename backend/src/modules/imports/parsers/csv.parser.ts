@@ -15,20 +15,81 @@ export class CsvParser {
       content = content.slice(1);
     }
 
-    const records: Record<string, any>[] = parse(content, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-      relax_column_count: true,
-    });
+    // Auto-detect delimiter from first sample lines
+    const firstLine = content.split('\n')[0] || '';
+    let delimiter = ',';
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semiCount = (firstLine.match(/;/g) || []).length;
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const pipeCount = (firstLine.match(/\|/g) || []).length;
 
-    const headers = records.length > 0 ? Object.keys(records[0]) : [];
+    if (semiCount > commaCount && semiCount >= tabCount) {
+      delimiter = ';';
+    } else if (tabCount > commaCount && tabCount >= semiCount) {
+      delimiter = '\t';
+    } else if (pipeCount > commaCount && pipeCount >= semiCount) {
+      delimiter = '|';
+    }
+
+    let records: Record<string, any>[] = [];
+    try {
+      records = parse(content, {
+        columns: true,
+        delimiter,
+        skip_empty_lines: true,
+        trim: true,
+        relax_column_count: true,
+        relax_quotes: true,
+        skip_records_with_error: true,
+      });
+    } catch (err) {
+      // Fallback: try parsing with standard comma
+      records = parse(content, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        relax_column_count: true,
+        relax_quotes: true,
+        skip_records_with_error: true,
+      });
+    }
+
+    if (records.length === 0) {
+      return {
+        headers: [],
+        rows: [],
+        totalRows: 0,
+        previewRows: [],
+      };
+    }
+
+    const rawHeaders = Object.keys(records[0]);
+    const headers = rawHeaders.map((h) => h.trim()).filter(Boolean);
+
+    // Normalize rows to trimmed keys & skip all-empty rows
+    const rows: Record<string, any>[] = [];
+    for (const record of records) {
+      const row: Record<string, any> = {};
+      let hasValue = false;
+      for (const [key, value] of Object.entries(record)) {
+        const cleanKey = key.trim();
+        if (!cleanKey) continue;
+        const cleanVal = typeof value === 'string' ? value.trim() : (value ?? '');
+        row[cleanKey] = cleanVal;
+        if (cleanVal !== '' && cleanVal !== null && cleanVal !== undefined) {
+          hasValue = true;
+        }
+      }
+      if (hasValue) {
+        rows.push(row);
+      }
+    }
 
     return {
       headers,
-      rows: records,
-      totalRows: records.length,
-      previewRows: records.slice(0, 10),
+      rows,
+      totalRows: rows.length,
+      previewRows: rows.slice(0, 10),
     };
   }
 }

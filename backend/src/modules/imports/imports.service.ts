@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ImportJob, ImportJobDocument } from '../../database/schemas/import-job.schema';
 import { ImportMapping, ImportMappingDocument } from '../../database/schemas/import-mapping.schema';
+import { Contact, ContactDocument } from '../../database/schemas/contact.schema';
 import { ContactsService } from '../contacts/contacts.service';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import { CsvParser, ParsedFileData } from './parsers/csv.parser';
@@ -31,6 +32,8 @@ const STANDARD_FIELDS = [
   'notes',
 ];
 
+const VALID_STATUSES = ['lead', 'prospect', 'customer', 'active', 'inactive'];
+
 @Injectable()
 export class ImportsService {
   private readonly logger = new Logger(ImportsService.name);
@@ -40,6 +43,8 @@ export class ImportsService {
     private readonly importJobModel: Model<ImportJobDocument>,
     @InjectModel(ImportMapping.name)
     private readonly importMappingModel: Model<ImportMappingDocument>,
+    @InjectModel(Contact.name)
+    private readonly contactModel: Model<ContactDocument>,
     private readonly contactsService: ContactsService,
     private readonly customFieldsService: CustomFieldsService,
   ) {}
@@ -90,6 +95,10 @@ export class ImportsService {
       name: 'fullName',
       fullname: 'fullName',
       'full name': 'fullName',
+      'contact person': 'fullName',
+      'contact name': 'fullName',
+      'person name': 'fullName',
+      'client name': 'fullName',
       firstname: 'firstName',
       'first name': 'firstName',
       fname: 'firstName',
@@ -101,8 +110,15 @@ export class ImportsService {
       'mobile number': 'phoneNumber',
       'mobile no': 'phoneNumber',
       'phone number': 'phoneNumber',
+      'contact no': 'phoneNumber',
+      'contact number': 'phoneNumber',
+      'cell no': 'phoneNumber',
       cell: 'phoneNumber',
-      whatsapp: 'phoneNumber',
+      whatsapp: 'whatsappNumber',
+      'whatsapp no': 'whatsappNumber',
+      'whatsapp number': 'whatsappNumber',
+      'wa number': 'whatsappNumber',
+      'wa no': 'whatsappNumber',
       email: 'email',
       'email address': 'email',
       'work email': 'email',
@@ -111,17 +127,34 @@ export class ImportsService {
       'company name': 'company',
       organization: 'company',
       org: 'company',
+      'business name': 'company',
+      business: 'company',
+      firm: 'company',
+      'firm name': 'company',
+      party: 'company',
+      'party name': 'company',
       website: 'website',
       url: 'website',
+      'web site': 'website',
       city: 'city',
       'city name': 'city',
+      location: 'city',
+      address: 'city',
       country: 'country',
+      state: 'country',
       designation: 'designation',
       title: 'designation',
       'job title': 'designation',
       role: 'designation',
       source: 'leadSource',
       'lead source': 'leadSource',
+      status: 'status',
+      notes: 'notes',
+      note: 'notes',
+      remark: 'notes',
+      remarks: 'notes',
+      tag: 'tags',
+      tags: 'tags',
     };
 
     for (const header of headers) {
@@ -138,8 +171,8 @@ export class ImportsService {
    * Previews normalized data and calculates accurate validation stats
    */
   async previewMapping(dto: PreviewImportDto) {
-    const { columnMapping, rows } = dto;
-    const previewCount = Math.min(rows.length, 10);
+    const { columnMapping, rows, totalRowCount } = dto;
+    const previewCount = Math.min(rows.length, 20);
     const previewRows: any[] = [];
     const errors: Array<{ row: number; column?: string; message: string }> = [];
 
@@ -148,6 +181,8 @@ export class ImportsService {
     let invalidRowsCount = 0;
     let warningCount = 0;
     let duplicateCandidatesCount = 0;
+
+    const totalRows = totalRowCount && totalRowCount > 0 ? totalRowCount : rows.length;
 
     for (let i = 0; i < rows.length; i++) {
       const rawRow = rows[i];
@@ -161,30 +196,49 @@ export class ImportsService {
         if (rawValue === undefined || rawValue === null || rawValue === '') continue;
 
         if (STANDARD_FIELDS.includes(targetField)) {
-          if (targetField === 'email') {
+          if (targetField === 'email' || targetField === 'alternateEmail') {
             const emailVal = String(rawValue).trim().toLowerCase();
             if (emailVal && !emailRegex.test(emailVal)) {
               rowHasWarning = true;
-              if (i < 50) {
+              if (errors.length < 30) {
                 errors.push({ row: rowNum, column: header, message: `Invalid email format '${emailVal}'` });
               }
             }
-            normalizedContact.email = emailVal;
-          } else if (targetField === 'phoneNumber') {
-            normalizedContact.phoneNumber = this.contactsService.normalizePhone(String(rawValue));
+            normalizedContact[targetField] = emailVal;
+          } else if (targetField === 'phoneNumber' || targetField === 'whatsappNumber') {
+            normalizedContact[targetField] = this.contactsService.normalizePhone(String(rawValue));
+          } else if (targetField === 'status') {
+            const s = String(rawValue).toLowerCase().trim();
+            normalizedContact.status = VALID_STATUSES.includes(s) ? s : 'lead';
+          } else if (targetField === 'tags') {
+            normalizedContact.tags = typeof rawValue === 'string'
+              ? rawValue.split(',').map((t) => t.trim()).filter(Boolean)
+              : [String(rawValue)];
           } else {
             normalizedContact[targetField] = String(rawValue).trim();
           }
         } else {
-          // Custom field
-          normalizedContact.customFields[targetField] = rawValue;
+          // Custom field: clean key
+          const cleanKey = targetField.replace(/[\.\$]/g, '_');
+          normalizedContact.customFields[cleanKey] = rawValue;
         }
       }
 
-      if (!normalizedContact.fullName && !normalizedContact.firstName && !normalizedContact.email && !normalizedContact.phoneNumber) {
+      // Check if contact has at least some identifiable information
+      const hasIdentity = Boolean(
+        normalizedContact.fullName ||
+        normalizedContact.firstName ||
+        normalizedContact.lastName ||
+        normalizedContact.company ||
+        normalizedContact.phoneNumber ||
+        normalizedContact.whatsappNumber ||
+        normalizedContact.email
+      );
+
+      if (!hasIdentity) {
         invalidRowsCount++;
-        if (i < 50) {
-          errors.push({ row: rowNum, message: 'Row skipped: missing name, phone, and email' });
+        if (errors.length < 30) {
+          errors.push({ row: rowNum, message: 'Row skipped: empty contact data' });
         }
       } else {
         validRowsCount++;
@@ -193,19 +247,32 @@ export class ImportsService {
 
       if (i < previewCount) {
         // Check duplicate candidate in DB for preview sample
-        const dups = await this.contactsService.detectDuplicates(normalizedContact.email, normalizedContact.phoneNumber);
-        if (dups.length > 0) {
-          duplicateCandidatesCount++;
-          normalizedContact.isDuplicateCandidate = true;
-        }
+        try {
+          const dups = await this.contactsService.detectDuplicates(
+            normalizedContact.email,
+            normalizedContact.phoneNumber,
+            normalizedContact.whatsappNumber,
+          );
+          if (dups && dups.length > 0) {
+            duplicateCandidatesCount++;
+            normalizedContact.isDuplicateCandidate = true;
+          }
+        } catch {}
         previewRows.push(normalizedContact);
       }
+    }
+
+    // Scale up stats if previewing a subset of total rows
+    if (totalRowCount && totalRowCount > rows.length && rows.length > 0) {
+      const validRatio = validRowsCount / rows.length;
+      validRowsCount = Math.round(totalRows * validRatio);
+      invalidRowsCount = Math.max(0, totalRows - validRowsCount);
     }
 
     return {
       previewRows,
       errors,
-      totalRows: rows.length,
+      totalRows,
       validRowsCount,
       invalidRowsCount,
       warningCount,
@@ -214,53 +281,80 @@ export class ImportsService {
   }
 
   /**
-   * Executes import and commits records to MongoDB Atlas
+   * Executes import and commits records to MongoDB Atlas using fast bulk operations
    */
   async executeImport(dto: ExecuteImportDto, orgId = 'default-org'): Promise<ImportJob> {
-    const { filename, fileFormat, columnMapping, newCustomFields = [], rows } = dto;
+    const {
+      filename,
+      fileFormat,
+      columnMapping,
+      newCustomFields = [],
+      rows,
+      jobId,
+      isFirstBatch = true,
+      isLastBatch = true,
+      totalExpectedRows,
+    } = dto;
 
-    // 1. Create newly declared custom fields if any
-    for (const fieldDef of newCustomFields) {
-      try {
-        await this.customFieldsService.createIfNotExists({
-          key: fieldDef.key,
-          label: fieldDef.label,
-          type: fieldDef.type as any,
-        });
-      } catch (err) {
-        this.logger.warn(`Could not register custom field '${fieldDef.key}': ${(err as Error).message}`);
+    // 1. Create newly declared custom fields if any (only on first batch)
+    if (isFirstBatch && newCustomFields.length > 0) {
+      for (const fieldDef of newCustomFields) {
+        try {
+          await this.customFieldsService.createIfNotExists({
+            key: fieldDef.key,
+            label: fieldDef.label,
+            type: fieldDef.type as any,
+          });
+        } catch (err) {
+          this.logger.warn(`Could not register custom field '${fieldDef.key}': ${(err as Error).message}`);
+        }
       }
     }
 
-    // 2. Initialize ImportJob record
-    const importJob = new this.importJobModel({
-      filename,
-      organizationId: orgId,
-      fileFormat,
-      totalRows: rows.length,
-      successfulRows: 0,
-      failedRows: 0,
-      warningCount: 0,
-      status: 'processing',
-      columnMapping,
-      errors: [],
-    });
-    await importJob.save();
+    // 2. Find or create ImportJob record
+    let importJob: ImportJobDocument | null = null;
+    if (jobId) {
+      try {
+        importJob = await this.importJobModel.findOne({ _id: jobId, organizationId: orgId });
+      } catch {}
+    }
 
-    let successfulRows = 0;
-    let failedRows = 0;
-    let warningCount = 0;
-    const errors: Array<{ row: number; column?: string; message: string }> = [];
+    if (!importJob) {
+      importJob = new this.importJobModel({
+        filename,
+        organizationId: orgId,
+        fileFormat,
+        totalRows: totalExpectedRows || rows.length,
+        successfulRows: 0,
+        failedRows: 0,
+        warningCount: 0,
+        status: 'processing',
+        columnMapping,
+        errors: [],
+      });
+      await importJob.save();
+    }
+
+    let batchSuccess = 0;
+    let batchFailed = 0;
+    let batchWarnings = 0;
+    const batchErrors: Array<{ row: number; column?: string; message: string }> = [];
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const docsToInsert: any[] = [];
 
-    // 3. Process rows
+    // 3. Normalize batch records
     for (let index = 0; index < rows.length; index++) {
       const rawRow = rows[index];
-      const rowNum = index + 1;
+      const rowNum = (dto.batchIndex !== undefined ? dto.batchIndex * rows.length : 0) + index + 1;
 
       try {
-        const contactData: Record<string, any> = { customFields: {}, organizationId: orgId };
+        const contactData: Record<string, any> = {
+          customFields: {},
+          organizationId: orgId,
+          tags: [],
+          status: 'lead',
+        };
 
         for (const [header, targetField] of Object.entries(columnMapping)) {
           if (!targetField || targetField === '__ignore__') continue;
@@ -268,52 +362,121 @@ export class ImportsService {
           if (rawValue === undefined || rawValue === null || rawValue === '') continue;
 
           if (STANDARD_FIELDS.includes(targetField)) {
-            if (targetField === 'email') {
+            if (targetField === 'email' || targetField === 'alternateEmail') {
               const emailVal = String(rawValue).trim().toLowerCase();
               if (emailVal && !emailRegex.test(emailVal)) {
-                warningCount++;
-                errors.push({ row: rowNum, column: header, message: `Invalid email format '${emailVal}'` });
+                batchWarnings++;
+                if (batchErrors.length < 50) {
+                  batchErrors.push({ row: rowNum, column: header, message: `Invalid email format '${emailVal}'` });
+                }
               }
-              contactData.email = emailVal;
-            } else if (targetField === 'phoneNumber') {
-              contactData.phoneNumber = this.contactsService.normalizePhone(String(rawValue));
+              contactData[targetField] = emailVal;
+            } else if (targetField === 'phoneNumber' || targetField === 'whatsappNumber') {
+              contactData[targetField] = this.contactsService.normalizePhone(String(rawValue));
+            } else if (targetField === 'status') {
+              const s = String(rawValue).toLowerCase().trim();
+              contactData.status = VALID_STATUSES.includes(s) ? s : 'lead';
+            } else if (targetField === 'tags') {
+              contactData.tags = typeof rawValue === 'string'
+                ? rawValue.split(',').map((t) => t.trim()).filter(Boolean)
+                : [String(rawValue)];
             } else {
               contactData[targetField] = String(rawValue).trim();
             }
           } else {
-            contactData.customFields[targetField] = rawValue;
+            const cleanKey = targetField.replace(/[\.\$]/g, '_');
+            contactData.customFields[cleanKey] = rawValue;
           }
         }
 
-        // Validate that contact has at least a name, phone, or email
-        if (!contactData.fullName && !contactData.firstName && !contactData.email && !contactData.phoneNumber) {
-          failedRows++;
-          errors.push({ row: rowNum, message: 'Row skipped: missing name, phone, and email' });
+        // Auto-assign fullName if missing
+        contactData.fullName =
+          contactData.fullName?.trim() ||
+          `${contactData.firstName || ''} ${contactData.lastName || ''}`.trim() ||
+          contactData.company?.trim() ||
+          contactData.phoneNumber ||
+          contactData.email ||
+          'Unnamed Contact';
+
+        // Check if contact has at least some identifiable information
+        const hasIdentity = Boolean(
+          contactData.fullName !== 'Unnamed Contact' ||
+          contactData.firstName ||
+          contactData.lastName ||
+          contactData.company ||
+          contactData.phoneNumber ||
+          contactData.whatsappNumber ||
+          contactData.email
+        );
+
+        if (!hasIdentity) {
+          batchFailed++;
+          if (batchErrors.length < 50) {
+            batchErrors.push({ row: rowNum, message: 'Row skipped: empty record' });
+          }
           continue;
         }
 
-        await this.contactsService.create(
-          contactData as any,
-          orgId,
-          {
-            type: 'import',
-            importJobId: importJob._id as any,
-          },
-        );
+        if (!contactData.whatsappNumber && contactData.phoneNumber) {
+          contactData.whatsappNumber = contactData.phoneNumber;
+        }
 
-        successfulRows++;
+        contactData.source = {
+          type: 'import',
+          importJobId: importJob._id as Types.ObjectId,
+        };
+
+        contactData.duplicateFlags = [];
+
+        docsToInsert.push(contactData);
       } catch (rowErr) {
-        failedRows++;
-        errors.push({ row: rowNum, message: (rowErr as Error).message });
+        batchFailed++;
+        if (batchErrors.length < 50) {
+          batchErrors.push({ row: rowNum, message: (rowErr as Error).message });
+        }
       }
     }
 
-    // 4. Update import job with final counts
-    importJob.successfulRows = successfulRows;
-    importJob.failedRows = failedRows;
-    importJob.warningCount = warningCount;
-    (importJob as any).errors = errors.slice(0, 100);
-    importJob.status = failedRows === rows.length ? 'failed' : 'completed';
+    // 4. Ultra-fast bulk insertion into MongoDB Atlas
+    if (docsToInsert.length > 0) {
+      try {
+        const result = await this.contactModel.insertMany(docsToInsert, {
+          ordered: false,
+          rawResult: true,
+        });
+        const insertedCount = (result as any)?.insertedCount ?? docsToInsert.length;
+        batchSuccess += insertedCount;
+      } catch (insertErr: any) {
+        // Mongoose BulkWriteError still inserts non-duplicate/valid rows
+        const insertedCount = insertErr.result?.nInserted ?? insertErr.insertedDocs?.length ?? 0;
+        batchSuccess += insertedCount;
+        const failedCount = docsToInsert.length - insertedCount;
+        batchFailed += failedCount;
+        if (batchErrors.length < 50) {
+          batchErrors.push({
+            row: 0,
+            message: `Bulk insert: ${insertedCount} saved, ${failedCount} skipped: ${(insertErr.message || '').slice(0, 120)}`,
+          });
+        }
+      }
+    }
+
+    // 5. Increment counts on the importJob
+    importJob.successfulRows = (importJob.successfulRows || 0) + batchSuccess;
+    importJob.failedRows = (importJob.failedRows || 0) + batchFailed;
+    importJob.warningCount = (importJob.warningCount || 0) + batchWarnings;
+
+    if (batchErrors.length > 0) {
+      const existingErrors = (importJob as any).errors || [];
+      (importJob as any).errors = [...existingErrors, ...batchErrors].slice(0, 100);
+    }
+
+    if (isLastBatch) {
+      importJob.status = importJob.successfulRows > 0 ? 'completed' : 'failed';
+    } else {
+      importJob.status = 'processing';
+    }
+
     return importJob.save();
   }
 
@@ -344,3 +507,4 @@ export class ImportsService {
     await this.importMappingModel.findOneAndDelete({ _id: id, organizationId: orgId }).exec();
   }
 }
+

@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CustomFieldDefinitionDto {
   @IsNotEmpty()
@@ -34,6 +34,30 @@ export class ExecuteImportDto {
   @IsNotEmpty()
   @IsArray()
   rows: Record<string, any>[];
+
+  @IsOptional()
+  @IsString()
+  jobId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isFirstBatch?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isLastBatch?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  batchIndex?: number;
+
+  @IsOptional()
+  @IsNumber()
+  totalBatches?: number;
+
+  @IsOptional()
+  @IsNumber()
+  totalExpectedRows?: number;
 }
 
 export class PreviewImportDto {
@@ -44,4 +68,8 @@ export class PreviewImportDto {
   @IsNotEmpty()
   @IsArray()
   rows: Record<string, any>[];
+
+  @IsOptional()
+  @IsNumber()
+  totalRowCount?: number;
 }
