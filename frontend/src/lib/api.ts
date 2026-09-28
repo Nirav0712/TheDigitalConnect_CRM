@@ -145,6 +145,8 @@ export const contactsApi = {
     api.delete(`/contacts/${id}`, { headers: { 'x-organization-id': orgId || currentOrganizationId } }).then((r) => r.data),
   deleteBulk: (ids: string[], orgId?: string) =>
     api.delete('/contacts/bulk', { data: { ids }, headers: { 'x-organization-id': orgId || currentOrganizationId } }).then((r) => r.data),
+  deleteAll: (orgId?: string) =>
+    api.delete('/contacts/all', { headers: { 'x-organization-id': orgId || currentOrganizationId } }).then((r) => r.data),
   exportCsv: async (params?: any) => {
     const res = await api.get('/contacts/export', {
       params,

@@ -85,6 +85,11 @@ export class ContactsController {
     return this.contactsService.deleteMany(ids || [], orgId);
   }
 
+  @Delete('all')
+  async deleteAll(@CurrentTenant() orgId: string) {
+    return this.contactsService.deleteAll(orgId);
+  }
+
   @Delete(':id')
   async delete(
     @Param('id') id: string,

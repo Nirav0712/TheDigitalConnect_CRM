@@ -49,6 +49,8 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  const [pageSize, setPageSize] = useState(50);
+
   // Filters
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
@@ -63,6 +65,8 @@ export default function ContactsPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [editingContact, setEditingContact] = useState<any | null>(null);
   const [detailContact, setDetailContact] = useState<any | null>(null);
   const [detailActivities, setDetailActivities] = useState<any[]>([]);
@@ -121,7 +125,7 @@ export default function ContactsPage() {
     try {
       const res = await contactsApi.getAll({
         page,
-        limit: 15,
+        limit: pageSize,
         search: search || undefined,
         status: filterStatus || undefined,
         department: filterDepartment || undefined,
@@ -145,6 +149,7 @@ export default function ContactsPage() {
     }
   }, [
     page,
+    pageSize,
     search,
     filterStatus,
     filterDepartment,
@@ -196,6 +201,23 @@ export default function ContactsPage() {
       fetchContacts();
     } catch (err) {
       showToast(extractErrorMessage(err), 'error');
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    setDeletingAll(true);
+    try {
+      const res = await contactsApi.deleteAll();
+      showToast(res?.message || 'All contacts deleted successfully.', 'success');
+      setIsDeleteAllModalOpen(false);
+      setSelectedIds([]);
+      if (detailContact) setDetailContact(null);
+      setPage(1);
+      await fetchContacts();
+    } catch (err) {
+      showToast(extractErrorMessage(err), 'error');
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -411,6 +433,17 @@ export default function ContactsPage() {
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Import File
           </Link>
+
+          {total > 0 && (
+            <button
+              onClick={() => setIsDeleteAllModalOpen(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+              title="Delete all contacts in the database"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              Delete All Contacts
+            </button>
+          )}
 
           <button
             onClick={handleOpenAdd}
@@ -766,9 +799,27 @@ export default function ContactsPage() {
 
         {/* Pagination Footer */}
         <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-          <div>
-            Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{contacts.length}</span> of{' '}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">{total}</span> records
+          <div className="flex items-center gap-3">
+            <div>
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{contacts.length}</span> of{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{total}</span> records
+            </div>
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-800 text-[11px]">
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 font-semibold focus:outline-none"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1331,6 +1382,54 @@ export default function ContactsPage() {
         onClose={() => setEmailModalContact(null)}
         onSuccess={(msg) => showToast(msg, 'success')}
       />
+
+      {/* DELETE ALL CONFIRMATION MODAL */}
+      {isDeleteAllModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-rose-100 dark:border-rose-950/50 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-200 dark:border-rose-800">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Delete All Contacts?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                Are you sure you want to permanently delete all <strong className="text-slate-800 dark:text-slate-200 font-semibold">{total} contact(s)</strong> from the database? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={deletingAll}
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingAll}
+                onClick={handleDeleteAll}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all disabled:opacity-50"
+              >
+                {deletingAll ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Deleting All...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Yes, Delete All ({total})
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

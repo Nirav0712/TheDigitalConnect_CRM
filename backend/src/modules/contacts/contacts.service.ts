@@ -297,6 +297,19 @@ export class ContactsService {
     return { deletedCount: result.deletedCount || 0 };
   }
 
+  async deleteAll(orgId = 'default-org'): Promise<{ deletedCount: number; success: boolean; message: string }> {
+    const query: FilterQuery<ContactDocument> = {};
+    if (orgId && orgId !== 'ALL') {
+      query.organizationId = orgId;
+    }
+    const result = await this.contactModel.deleteMany(query).exec();
+    return {
+      success: true,
+      deletedCount: result.deletedCount || 0,
+      message: `Successfully deleted ${result.deletedCount || 0} contacts`,
+    };
+  }
+
 
   async getStats(orgId = 'default-org'): Promise<{
     totalContacts: number;
