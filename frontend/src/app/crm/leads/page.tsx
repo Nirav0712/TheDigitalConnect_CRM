@@ -40,6 +40,19 @@ export default function CrmLeadsPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Edit Lead Modal
+  const [editingLead, setEditingLead] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    contactId: '',
+    title: '',
+    dealValue: 1000,
+    stage: 'new',
+    score: 60,
+    source: 'website',
+    notes: '',
+  });
+  const [updating, setUpdating] = useState(false);
+
   const loadLeads = async () => {
     setLoading(true);
     setErrorBanner(null);
@@ -92,6 +105,38 @@ export default function CrmLeadsPage() {
       alert(`Failed to create lead: ${extractErrorMessage(err)}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleOpenEdit = (lead: any) => {
+    setEditingLead(lead);
+    setEditForm({
+      contactId: lead.contactId?._id || lead.contactId || '',
+      title: lead.title || '',
+      dealValue: lead.dealValue ?? 0,
+      stage: lead.stage || 'new',
+      score: lead.score ?? 50,
+      source: lead.source || 'website',
+      notes: lead.notes || '',
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLead) return;
+    if (!editForm.contactId || !editForm.title) {
+      alert('Please select a contact and specify deal title.');
+      return;
+    }
+    setUpdating(true);
+    try {
+      await crmApi.updateLead(editingLead._id, editForm);
+      setEditingLead(null);
+      loadLeads();
+    } catch (err) {
+      alert(`Failed to update lead: ${extractErrorMessage(err)}`);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -253,13 +298,22 @@ export default function CrmLeadsPage() {
                       {lead.source || 'Direct'}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleDelete(lead._id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
-                        title="Delete Lead"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(lead)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-400 transition-colors"
+                          title="Edit Lead"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(lead._id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 transition-colors"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -273,7 +327,16 @@ export default function CrmLeadsPage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Create New Lead / Deal</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Create New Lead / Deal</h3>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Associated Contact</label>
@@ -331,6 +394,34 @@ export default function CrmLeadsPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lead Score (0-100)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={form.score}
+                    onChange={(e) => setForm({ ...form, score: Number(e.target.value) })}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Source</label>
+                  <select
+                    value={form.source}
+                    onChange={(e) => setForm({ ...form, source: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white capitalize"
+                  >
+                    {['website', 'whatsapp', 'referral', 'campaign', 'direct', 'social', 'cold-call', 'other'].map((src) => (
+                      <option key={src} value={src}>
+                        {src}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Notes / Scope</label>
                 <textarea
@@ -356,6 +447,140 @@ export default function CrmLeadsPage() {
                   className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   {saving ? 'Creating...' : 'Create Deal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Modal */}
+      {editingLead && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Edit Lead / Deal
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingLead(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdate} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Associated Contact</label>
+                <select
+                  required
+                  value={editForm.contactId}
+                  onChange={(e) => setEditForm({ ...editForm, contactId: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="">Select Contact...</option>
+                  {Array.isArray(contacts) &&
+                    contacts.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.fullName || c.firstName || 'Contact'} ({c.company || c.phoneNumber || c.email})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Deal Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Enterprise License — 100k Messages"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Deal Value ($)</label>
+                  <input
+                    type="number"
+                    value={editForm.dealValue}
+                    onChange={(e) => setEditForm({ ...editForm, dealValue: Number(e.target.value) })}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Stage</label>
+                  <select
+                    value={editForm.stage}
+                    onChange={(e) => setEditForm({ ...editForm, stage: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white capitalize"
+                  >
+                    {['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lead Score (0-100)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editForm.score}
+                    onChange={(e) => setEditForm({ ...editForm, score: Number(e.target.value) })}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Source</label>
+                  <select
+                    value={editForm.source}
+                    onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white capitalize"
+                  >
+                    {['website', 'whatsapp', 'referral', 'campaign', 'direct', 'social', 'cold-call', 'other'].map((src) => (
+                      <option key={src} value={src}>
+                        {src}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Notes / Scope</label>
+                <textarea
+                  rows={3}
+                  placeholder="Add context about this opportunity..."
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingLead(null)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+                >
+                  {updating ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
