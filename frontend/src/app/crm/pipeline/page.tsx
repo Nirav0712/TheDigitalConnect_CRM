@@ -6,11 +6,9 @@ import {
   Kanban,
   Plus,
   RefreshCw,
-  DollarSign,
-  ChevronRight,
-  ArrowRight,
   User,
   Building,
+  GripVertical,
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
@@ -42,6 +40,10 @@ export default function CrmPipelinePage() {
   });
   const [loading, setLoading] = useState(true);
   const [movingId, setMovingId] = useState<string | null>(null);
+  
+  // Drag and drop state
+  const [draggedLead, setDraggedLead] = useState<{ id: string; fromStage: string } | null>(null);
+  const [hoveredDropStage, setHoveredDropStage] = useState<string | null>(null);
 
   const loadPipeline = async () => {
     setLoading(true);
@@ -59,13 +61,48 @@ export default function CrmPipelinePage() {
     loadPipeline();
   }, []);
 
-  const handleMoveStage = async (leadId: string, currentStage: string, nextStage: string) => {
+  // Optimistic Move Handler for both Drag & Drop and manual Advance
+  const moveLeadToStage = async (leadId: string, fromStage: string, toStage: string) => {
+    if (fromStage === toStage) return;
+
+    // Backup current state for rollback on failure
+    const backupData = JSON.parse(JSON.stringify(pipelineData));
+
+    // Find the lead object in fromStage
+    const sourceLeads = pipelineData.stages?.[fromStage]?.leads || [];
+    const targetLead = sourceLeads.find((l: any) => l._id === leadId);
+    if (!targetLead) return;
+
+    const dealValue = targetLead.dealValue || 0;
+    const updatedLead = { ...targetLead, stage: toStage };
+
+    // Optimistically update pipelineData state
+    const nextStages = { ...pipelineData.stages };
+    nextStages[fromStage] = {
+      ...nextStages[fromStage],
+      leads: sourceLeads.filter((l: any) => l._id !== leadId),
+      count: Math.max(0, (nextStages[fromStage]?.count || 1) - 1),
+      totalValue: Math.max(0, (nextStages[fromStage]?.totalValue || 0) - dealValue),
+    };
+    nextStages[toStage] = {
+      ...nextStages[toStage],
+      leads: [updatedLead, ...(nextStages[toStage]?.leads || [])],
+      count: (nextStages[toStage]?.count || 0) + 1,
+      totalValue: (nextStages[toStage]?.totalValue || 0) + dealValue,
+    };
+
+    setPipelineData({
+      ...pipelineData,
+      stages: nextStages,
+    });
+
     setMovingId(leadId);
     try {
-      await crmApi.updateLead(leadId, { stage: nextStage });
-      loadPipeline();
+      await crmApi.updateLead(leadId, { stage: toStage });
     } catch (err) {
-      alert(`Failed to update stage: ${extractErrorMessage(err)}`);
+      // Revert if API fails
+      setPipelineData(backupData);
+      alert(`Failed to move lead: ${extractErrorMessage(err)}`);
     } finally {
       setMovingId(null);
     }
@@ -79,7 +116,7 @@ export default function CrmPipelinePage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             CRM Deal Pipeline
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-              Interactive Kanban
+              Interactive Kanban & Drag-and-Drop
             </span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -87,7 +124,7 @@ export default function CrmPipelinePage() {
             <span className="font-bold text-emerald-600 dark:text-emerald-400">
               {formatCurrency(pipelineData.totalPipelineValue || 0)}
             </span>{' '}
-            across {pipelineData.totalDeals || 0} opportunities.
+            across {pipelineData.totalDeals || 0} opportunities. <span className="text-xs text-slate-400">(Drag & drop any deal card to change stage)</span>
           </p>
         </div>
 
@@ -111,17 +148,60 @@ export default function CrmPipelinePage() {
       </div>
 
       {/* Kanban Board Horizontal Scroll View */}
-      <div className="flex-1 overflow-x-auto min-h-0 pb-4">
+      <div className="flex-1 overflow-x-auto min-h-0 pb-4 select-none">
         <div className="inline-flex gap-4 min-w-full h-full">
           {STAGES.map((st, idx) => {
             const stageInfo = pipelineData.stages?.[st.key] || { leads: [], totalValue: 0, count: 0 };
             const nextStageKey = STAGES[idx + 1]?.key;
             const prevStageKey = STAGES[idx - 1]?.key;
+            const isDropTarget = hoveredDropStage === st.key;
 
             return (
               <div
                 key={st.key}
-                className={`w-72 md:w-80 flex flex-col rounded-2xl border ${st.color} shadow-2xs flex-shrink-0`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (hoveredDropStage !== st.key) {
+                    setHoveredDropStage(st.key);
+                  }
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  setHoveredDropStage(st.key);
+                }}
+                onDragLeave={(e) => {
+                  // Only reset if leaving current column container
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setHoveredDropStage(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setHoveredDropStage(null);
+                  let leadId = '';
+                  let fromStage = '';
+                  try {
+                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    leadId = data.leadId;
+                    fromStage = data.fromStage;
+                  } catch {
+                    if (draggedLead) {
+                      leadId = draggedLead.id;
+                      fromStage = draggedLead.fromStage;
+                    }
+                  }
+
+                  if (leadId && fromStage) {
+                    moveLeadToStage(leadId, fromStage, st.key);
+                  }
+                  setDraggedLead(null);
+                }}
+                className={`w-72 md:w-80 flex flex-col rounded-2xl border ${st.color} shadow-2xs flex-shrink-0 transition-all duration-200 ${
+                  isDropTarget
+                    ? 'ring-2 ring-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/40 scale-[1.01]'
+                    : ''
+                }`}
               >
                 {/* Stage Header */}
                 <div className="p-3.5 border-b border-slate-200/60 dark:border-slate-800 flex items-center justify-between bg-white/60 dark:bg-slate-900/60 rounded-t-2xl">
@@ -141,70 +221,108 @@ export default function CrmPipelinePage() {
                 {/* Cards Container */}
                 <div className="flex-1 p-3 space-y-3 overflow-y-auto">
                   {stageInfo.leads.length === 0 ? (
-                    <div className="p-8 text-center text-[11px] text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                      No deals in {st.label.toLowerCase()}
+                    <div
+                      className={`p-8 text-center text-[11px] border border-dashed rounded-xl transition-colors ${
+                        isDropTarget
+                          ? 'border-emerald-500 bg-emerald-100/30 text-emerald-700 dark:text-emerald-300 font-medium'
+                          : 'text-slate-400 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      {isDropTarget ? 'Drop Deal Here' : `No deals in ${st.label.toLowerCase()}`}
                     </div>
                   ) : (
-                    stageInfo.leads.map((lead: any) => (
-                      <div
-                        key={lead._id}
-                        className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all space-y-2.5"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-2">
-                            {lead.title}
-                          </h4>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white flex-shrink-0">
-                            {formatCurrency(lead.dealValue || 0)}
-                          </span>
-                        </div>
+                    stageInfo.leads.map((lead: any) => {
+                      const isBeingDragged = draggedLead?.id === lead._id;
 
-                        {lead.contactId && (
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <User className="w-3 h-3 text-slate-400" />
-                              <span className="truncate">{lead.contactId.fullName}</span>
+                      return (
+                        <div
+                          key={lead._id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData(
+                              'text/plain',
+                              JSON.stringify({ leadId: lead._id, fromStage: st.key })
+                            );
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggedLead({ id: lead._id, fromStage: st.key });
+                          }}
+                          onDragEnd={() => {
+                            setDraggedLead(null);
+                            setHoveredDropStage(null);
+                          }}
+                          className={`p-4 rounded-xl bg-white dark:bg-slate-900 border transition-all space-y-2.5 cursor-grab active:cursor-grabbing hover:shadow-md ${
+                            isBeingDragged
+                              ? 'opacity-40 border-dashed border-emerald-500 scale-95'
+                              : 'border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-emerald-500/40'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-1.5 min-w-0">
+                              <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 flex-shrink-0 mt-0.5" />
+                              <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-2">
+                                {lead.title}
+                              </h4>
                             </div>
-                            {lead.contactId.company && (
-                              <div className="flex items-center gap-1.5 truncate">
-                                <Building className="w-3 h-3 text-slate-400" />
-                                <span className="truncate">{lead.contactId.company}</span>
-                              </div>
-                            )}
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                              {formatCurrency(lead.dealValue || 0)}
+                            </span>
                           </div>
-                        )}
 
-                        {/* Score & Stage Stepper */}
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                          <span className="text-[10px] font-semibold text-slate-400">
-                            Score: <span className="text-emerald-600">{lead.score || 50}</span>
-                          </span>
+                          {lead.contactId && (
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5 pl-5">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <User className="w-3 h-3 text-slate-400" />
+                                <span className="truncate">{lead.contactId.fullName}</span>
+                              </div>
+                              {lead.contactId.company && (
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <Building className="w-3 h-3 text-slate-400" />
+                                  <span className="truncate">{lead.contactId.company}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
-                          <div className="flex items-center gap-1">
-                            {prevStageKey && (
-                              <button
-                                onClick={() => handleMoveStage(lead._id, st.key, prevStageKey)}
-                                disabled={movingId === lead._id}
-                                className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                                title={`Move to ${prevStageKey}`}
-                              >
-                                ←
-                              </button>
-                            )}
-                            {nextStageKey && (
-                              <button
-                                onClick={() => handleMoveStage(lead._id, st.key, nextStageKey)}
-                                disabled={movingId === lead._id}
-                                className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 font-bold"
-                                title={`Advance to ${nextStageKey}`}
-                              >
-                                Advance →
-                              </button>
-                            )}
+                          {/* Score & Quick Stage Stepper */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <span className="text-[10px] font-semibold text-slate-400">
+                              Score: <span className="text-emerald-600 font-bold">{lead.score || 50}</span>
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              {prevStageKey && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveLeadToStage(lead._id, st.key, prevStageKey);
+                                  }}
+                                  disabled={movingId === lead._id}
+                                  className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                                  title={`Move to ${prevStageKey}`}
+                                >
+                                  ←
+                                </button>
+                              )}
+                              {nextStageKey && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveLeadToStage(lead._id, st.key, nextStageKey);
+                                  }}
+                                  disabled={movingId === lead._id}
+                                  className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 font-bold"
+                                  title={`Advance to ${nextStageKey}`}
+                                >
+                                  Advance →
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
