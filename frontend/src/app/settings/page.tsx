@@ -17,12 +17,14 @@ import {
   Sliders,
   Layers,
   Layout,
+  Coins,
 } from 'lucide-react';
 import { settingsApi, extractErrorMessage } from '../../lib/api';
 import { useTheme, HeaderStyle } from '../../context/ThemeContext';
+import { useCurrency } from '../../context/CurrencyContext';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'theme' | 'throttles' | 'webhooks'>('theme');
+  const [activeTab, setActiveTab] = useState<'theme' | 'throttles' | 'webhooks' | 'currency'>('theme');
   const {
     theme,
     updateThemeField,
@@ -31,6 +33,16 @@ export default function SettingsPage() {
     resetTheme,
     isSaving: isSavingTheme,
   } = useTheme();
+
+  const {
+    currency,
+    currencySymbol,
+    currencyDetails,
+    saveCurrency,
+    formatCurrency,
+    supportedCurrencies,
+  } = useCurrency();
+  const [savingCurrency, setSavingCurrency] = useState(false);
 
   // General settings state
   const [settings, setSettings] = useState({
@@ -172,6 +184,18 @@ export default function SettingsPage() {
         >
           <Webhook className="w-4 h-4" />
           Webhooks & Security
+        </button>
+
+        <button
+          onClick={() => setActiveTab('currency')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTab === 'currency'
+              ? 'bg-emerald-600 text-white shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Coins className="w-4 h-4" />
+          CRM Currency & Region
         </button>
       </div>
 
@@ -523,6 +547,123 @@ export default function SettingsPage() {
             >
               {copiedWebhook ? 'Copied!' : 'Copy URL'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: CRM CURRENCY & REGION */}
+      {activeTab === 'currency' && (
+        <div className="space-y-6 max-w-4xl">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  CRM Default Currency & Valuation Symbol
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Choose the primary currency for all CRM pipeline values, deals, win analytics, and metrics.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Active Currency:</span>
+                <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+                  <span>{currencyDetails.flag}</span>
+                  <span>{currencyDetails.code} ({currencyDetails.symbol.trim()})</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Currency Options Grid */}
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 block">
+                Select Base Currency
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {supportedCurrencies.map((c) => {
+                  const isSelected = currency === c.code;
+                  return (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={async () => {
+                        setSavingCurrency(true);
+                        try {
+                          await saveCurrency(c.code);
+                          setSavedToast(`CRM Currency switched to ${c.name}!`);
+                          setTimeout(() => setSavedToast(null), 3000);
+                        } catch (err) {
+                          alert(`Failed to save currency: ${extractErrorMessage(err)}`);
+                        } finally {
+                          setSavingCurrency(false);
+                        }
+                      }}
+                      className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden flex items-start justify-between ${
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 shadow-xs ring-2 ring-emerald-500/20'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{c.flag}</span>
+                          <span className="font-bold text-sm">{c.code}</span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{c.name}</div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-xl font-black text-slate-900 dark:text-white font-mono">
+                          {c.symbol.trim()}
+                        </span>
+                        {isSelected && (
+                          <div className="mt-1 flex items-center justify-end text-[10px] font-bold text-emerald-600 dark:text-emerald-400 gap-0.5">
+                            <Check className="w-3 h-3" />
+                            <span>Active</span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live Sample Showcase */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Live CRM Format Preview with {currencyDetails.name}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-2xs">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Sample Deal Card</div>
+                  <div className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+                    {formatCurrency(50000)}
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                    Enterprise License
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-2xs">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Total Pipeline Value</div>
+                  <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                    {formatCurrency(1250000)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Across 24 opportunities</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-2xs">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Closed-Won Deals</div>
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                    {formatCurrency(480000)}
+                  </div>
+                  <div className="text-[10px] text-emerald-500 mt-0.5">72% conversion rate</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

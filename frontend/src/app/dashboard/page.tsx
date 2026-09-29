@@ -26,8 +26,10 @@ import {
   campaignsApi,
   crmApi,
 } from '../../lib/api';
+import { useCurrency } from '../../context/CurrencyContext';
 
 export default function DashboardPage() {
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalContacts: 0,
@@ -161,7 +163,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
-            ${stats.pipelineValue.toLocaleString()}
+            {formatCurrency(stats.pipelineValue)}
           </div>
           <div className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-medium">
             <span>{stats.totalLeads} active leads</span>

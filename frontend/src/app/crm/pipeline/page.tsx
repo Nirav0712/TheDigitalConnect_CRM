@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { crmApi, extractErrorMessage } from '../../../lib/api';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const STAGES = [
   { key: 'new', label: 'New Inquiries', color: 'border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30' },
@@ -26,6 +27,7 @@ const STAGES = [
 ];
 
 export default function CrmPipelinePage() {
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [pipelineData, setPipelineData] = useState<any>({
     stages: {
       new: { leads: [], totalValue: 0, count: 0 },
@@ -81,7 +83,11 @@ export default function CrmPipelinePage() {
             </span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Total Pipeline Valuation: <span className="font-bold text-emerald-600 dark:text-emerald-400">${(pipelineData.totalPipelineValue || 0).toLocaleString()}</span> across {pipelineData.totalDeals || 0} opportunities.
+            Total Pipeline Valuation:{' '}
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(pipelineData.totalPipelineValue || 0)}
+            </span>{' '}
+            across {pipelineData.totalDeals || 0} opportunities.
           </p>
         </div>
 
@@ -128,7 +134,7 @@ export default function CrmPipelinePage() {
                     </span>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    ${(stageInfo.totalValue || 0).toLocaleString()}
+                    {formatCurrency(stageInfo.totalValue || 0)}
                   </span>
                 </div>
 
@@ -149,7 +155,7 @@ export default function CrmPipelinePage() {
                             {lead.title}
                           </h4>
                           <span className="text-xs font-bold text-slate-900 dark:text-white flex-shrink-0">
-                            ${(lead.dealValue || 0).toLocaleString()}
+                            {formatCurrency(lead.dealValue || 0)}
                           </span>
                         </div>
 

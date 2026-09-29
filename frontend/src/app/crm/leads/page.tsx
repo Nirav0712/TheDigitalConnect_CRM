@@ -18,8 +18,10 @@ import {
   X,
 } from 'lucide-react';
 import { crmApi, contactsApi, extractErrorMessage } from '../../../lib/api';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 export default function CrmLeadsPage() {
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [leads, setLeads] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -281,7 +283,7 @@ export default function CrmLeadsPage() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
-                      ${(lead.dealValue || 0).toLocaleString()}
+                      {formatCurrency(lead.dealValue || 0)}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
@@ -370,7 +372,9 @@ export default function CrmLeadsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Deal Value ($)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Deal Value ({currencySymbol.trim()})
+                  </label>
                   <input
                     type="number"
                     value={form.dealValue}
@@ -504,7 +508,9 @@ export default function CrmLeadsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Deal Value ($)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Deal Value ({currencySymbol.trim()})
+                  </label>
                   <input
                     type="number"
                     value={editForm.dealValue}

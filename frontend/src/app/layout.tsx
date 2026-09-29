@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '../context/ThemeContext';
+import { CurrencyProvider } from '../context/CurrencyContext';
 import { AppShell } from '../components/layout/AppShell';
 
 export const metadata: Metadata = {
@@ -37,7 +38,9 @@ export default function RootLayout({
       </head>
       <body className="h-full font-sans antialiased overflow-hidden">
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <CurrencyProvider>
+            <AppShell>{children}</AppShell>
+          </CurrencyProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -27,7 +27,7 @@ export class Lead {
   @Prop({ default: 0 })
   dealValue: number;
 
-  @Prop({ default: 'USD' })
+  @Prop({ default: 'INR' })
   currency: string;
 
   @Prop({ default: 50, min: 0, max: 100 })

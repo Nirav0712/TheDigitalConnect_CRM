@@ -11,8 +11,10 @@ import {
   PieChart,
 } from 'lucide-react';
 import { crmApi, extractErrorMessage } from '../../../lib/api';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 export default function CrmLeadSourcesPage() {
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [sources, setSources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +73,7 @@ export default function CrmLeadSourcesPage() {
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Generated Pipeline</div>
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
-            ${totalValue.toLocaleString()}
+            {formatCurrency(totalValue)}
           </div>
         </div>
 
@@ -111,7 +113,7 @@ export default function CrmLeadSourcesPage() {
                       {src.count}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                      ${src.totalValue.toLocaleString()}
+                      {formatCurrency(src.totalValue)}
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">
                       {src.wonCount}

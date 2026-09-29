@@ -138,7 +138,7 @@ export class CrmService {
       title: dto.title.trim(),
       stage: dto.stage || 'new',
       dealValue: dto.dealValue || 0,
-      currency: dto.currency || 'USD',
+      currency: dto.currency || 'INR',
       score: dto.score !== undefined ? dto.score : 50,
       source: dto.source || contact.leadSource || 'direct',
       assignedTo: dto.assignedTo,

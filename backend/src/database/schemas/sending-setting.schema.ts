@@ -34,6 +34,9 @@ export class SendingSetting {
 
   @Prop({ default: true })
   stopOnAccountExhaustion: boolean;
+
+  @Prop({ default: 'INR' })
+  crmCurrency: string;
 }
 
 export const SendingSettingSchema = SchemaFactory.createForClass(SendingSetting);
