@@ -81,6 +81,7 @@ const NAVIGATION: NavParent[] = [
     label: 'CRM',
     icon: UserCheck,
     children: [
+      { label: 'CRM Dashboard', href: '/crm/dashboard', icon: LayoutDashboard },
       { label: 'Leads', href: '/crm/leads', icon: Users },
       { label: 'Pipeline', href: '/crm/pipeline', icon: Kanban },
       { label: 'Follow-ups', href: '/crm/follow-ups', icon: CalendarCheck },
@@ -140,6 +141,7 @@ export function Sidebar() {
     if (href === '/whatsapp/inbox') return pathname === '/whatsapp/inbox' || pathname === '/inbox/whatsapp';
     if (href === '/email/hub') return pathname === '/email/hub' || pathname === '/email';
     if (href === '/email/inbox') return pathname === '/email/inbox' || pathname === '/inbox/email';
+    if (href === '/crm/dashboard') return pathname === '/crm/dashboard' || pathname === '/crm';
     return pathname === href || pathname.startsWith(href + '/');
   };
 

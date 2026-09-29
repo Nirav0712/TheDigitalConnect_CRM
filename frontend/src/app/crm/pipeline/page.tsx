@@ -65,42 +65,63 @@ export default function CrmPipelinePage() {
 
   // Optimistic Move Handler for both Drag & Drop and Stage Selectors
   const moveLeadToStage = async (leadId: string, fromStage: string, toStage: string) => {
-    if (!leadId || !fromStage || !toStage || fromStage === toStage) return;
+    if (!leadId || !toStage) return;
 
     // Backup current state for rollback on failure
     const backupData = JSON.parse(JSON.stringify(pipelineData));
 
-    // Find the lead object in fromStage
-    const sourceLeads = pipelineData.stages?.[fromStage]?.leads || [];
-    const targetLead = sourceLeads.find((l: any) => l._id === leadId);
-    if (!targetLead) return;
+    // Find the lead across all stages
+    let targetLead: any = null;
+    let originalStage = fromStage;
 
-    const dealValue = targetLead.dealValue || 0;
+    Object.keys(pipelineData.stages || {}).forEach((stKey) => {
+      const found = pipelineData.stages[stKey]?.leads?.find(
+        (l: any) => String(l._id) === String(leadId)
+      );
+      if (found) {
+        targetLead = found;
+        originalStage = stKey;
+      }
+    });
+
+    if (!targetLead || originalStage === toStage) return;
+
     const updatedLead = { ...targetLead, stage: toStage };
 
-    // Optimistically update pipelineData state immediately
-    const nextStages = { ...pipelineData.stages };
-    nextStages[fromStage] = {
-      ...nextStages[fromStage],
-      leads: sourceLeads.filter((l: any) => l._id !== leadId),
-      count: Math.max(0, (nextStages[fromStage]?.count || 1) - 1),
-      totalValue: Math.max(0, (nextStages[fromStage]?.totalValue || 0) - dealValue),
-    };
-    nextStages[toStage] = {
-      ...nextStages[toStage],
-      leads: [updatedLead, ...(nextStages[toStage]?.leads || [])],
-      count: (nextStages[toStage]?.count || 0) + 1,
-      totalValue: (nextStages[toStage]?.totalValue || 0) + dealValue,
-    };
+    // Cleanly reconstruct all stages so lead ONLY exists in toStage
+    const reconstructedStages: any = {};
+    const stagesList = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'];
 
-    setPipelineData({
-      ...pipelineData,
-      stages: nextStages,
+    stagesList.forEach((stKey) => {
+      // Remove leadId from every single stage
+      const existing = (pipelineData.stages?.[stKey]?.leads || []).filter(
+        (l: any) => String(l._id) !== String(leadId)
+      );
+
+      // If this is the target stage, prepend the updated lead
+      const finalLeads = stKey === toStage ? [updatedLead, ...existing] : existing;
+      const sumVal = finalLeads.reduce((acc: number, item: any) => acc + (item.dealValue || 0), 0);
+
+      reconstructedStages[stKey] = {
+        leads: finalLeads,
+        count: finalLeads.length,
+        totalValue: sumVal,
+      };
     });
+
+    setPipelineData((prev: any) => ({
+      ...prev,
+      stages: reconstructedStages,
+    }));
 
     setMovingId(leadId);
     try {
       await crmApi.updateLead(leadId, { stage: toStage });
+      // Re-fetch pipeline summary in background for permanent consistency
+      const fresh = await crmApi.getPipelineSummary();
+      if (fresh) {
+        setPipelineData(fresh);
+      }
     } catch (err) {
       // Revert if API fails
       setPipelineData(backupData);
@@ -134,7 +155,7 @@ export default function CrmPipelinePage() {
       }
     }
 
-    if (leadId && fromStage && fromStage !== toStage) {
+    if (leadId) {
       moveLeadToStage(leadId, fromStage, toStage);
     }
 
