@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import {
   Kanban,
@@ -11,6 +11,7 @@ import {
   GripVertical,
   CheckCircle2,
   AlertCircle,
+  MoreHorizontal,
 } from 'lucide-react';
 import { crmApi, extractErrorMessage } from '../../../lib/api';
 import { useCurrency } from '../../../context/CurrencyContext';
@@ -41,8 +42,9 @@ export default function CrmPipelinePage() {
   const [loading, setLoading] = useState(true);
   const [movingId, setMovingId] = useState<string | null>(null);
   
-  // Drag and drop state
-  const [draggedLead, setDraggedLead] = useState<{ id: string; fromStage: string } | null>(null);
+  // Drag and drop state & ref
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const draggedInfoRef = useRef<{ id: string; fromStage: string } | null>(null);
   const [hoveredDropStage, setHoveredDropStage] = useState<string | null>(null);
 
   const loadPipeline = async () => {
@@ -61,9 +63,9 @@ export default function CrmPipelinePage() {
     loadPipeline();
   }, []);
 
-  // Optimistic Move Handler for both Drag & Drop and manual Advance
+  // Optimistic Move Handler for both Drag & Drop and Stage Selectors
   const moveLeadToStage = async (leadId: string, fromStage: string, toStage: string) => {
-    if (fromStage === toStage) return;
+    if (!leadId || !fromStage || !toStage || fromStage === toStage) return;
 
     // Backup current state for rollback on failure
     const backupData = JSON.parse(JSON.stringify(pipelineData));
@@ -76,7 +78,7 @@ export default function CrmPipelinePage() {
     const dealValue = targetLead.dealValue || 0;
     const updatedLead = { ...targetLead, stage: toStage };
 
-    // Optimistically update pipelineData state
+    // Optimistically update pipelineData state immediately
     const nextStages = { ...pipelineData.stages };
     nextStages[fromStage] = {
       ...nextStages[fromStage],
@@ -108,6 +110,38 @@ export default function CrmPipelinePage() {
     }
   };
 
+  const handleDropOnStage = (e: React.DragEvent, toStage: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHoveredDropStage(null);
+
+    let leadId = '';
+    let fromStage = '';
+
+    if (draggedInfoRef.current) {
+      leadId = draggedInfoRef.current.id;
+      fromStage = draggedInfoRef.current.fromStage;
+    } else {
+      try {
+        const text = e.dataTransfer.getData('text/plain');
+        if (text) {
+          const data = JSON.parse(text);
+          leadId = data.leadId;
+          fromStage = data.fromStage;
+        }
+      } catch (err) {
+        console.warn('Drag data parse error:', err);
+      }
+    }
+
+    if (leadId && fromStage && fromStage !== toStage) {
+      moveLeadToStage(leadId, fromStage, toStage);
+    }
+
+    draggedInfoRef.current = null;
+    setDraggedLeadId(null);
+  };
+
   return (
     <div className="space-y-6 flex-1 flex flex-col min-h-0">
       {/* Header */}
@@ -116,7 +150,7 @@ export default function CrmPipelinePage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             CRM Deal Pipeline
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-              Interactive Kanban & Drag-and-Drop
+              Drag & Drop Kanban
             </span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -124,7 +158,7 @@ export default function CrmPipelinePage() {
             <span className="font-bold text-emerald-600 dark:text-emerald-400">
               {formatCurrency(pipelineData.totalPipelineValue || 0)}
             </span>{' '}
-            across {pipelineData.totalDeals || 0} opportunities. <span className="text-xs text-slate-400">(Drag & drop any deal card to change stage)</span>
+            across {pipelineData.totalDeals || 0} opportunities. <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">• Drag cards anywhere or use stage selectors</span>
           </p>
         </div>
 
@@ -148,7 +182,7 @@ export default function CrmPipelinePage() {
       </div>
 
       {/* Kanban Board Horizontal Scroll View */}
-      <div className="flex-1 overflow-x-auto min-h-0 pb-4 select-none">
+      <div className="flex-1 overflow-x-auto min-h-0 pb-4">
         <div className="inline-flex gap-4 min-w-full h-full">
           {STAGES.map((st, idx) => {
             const stageInfo = pipelineData.stages?.[st.key] || { leads: [], totalValue: 0, count: 0 };
@@ -161,6 +195,7 @@ export default function CrmPipelinePage() {
                 key={st.key}
                 onDragOver={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   e.dataTransfer.dropEffect = 'move';
                   if (hoveredDropStage !== st.key) {
                     setHoveredDropStage(st.key);
@@ -168,38 +203,19 @@ export default function CrmPipelinePage() {
                 }}
                 onDragEnter={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   setHoveredDropStage(st.key);
                 }}
                 onDragLeave={(e) => {
-                  // Only reset if leaving current column container
+                  e.preventDefault();
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                     setHoveredDropStage(null);
                   }
                 }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setHoveredDropStage(null);
-                  let leadId = '';
-                  let fromStage = '';
-                  try {
-                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                    leadId = data.leadId;
-                    fromStage = data.fromStage;
-                  } catch {
-                    if (draggedLead) {
-                      leadId = draggedLead.id;
-                      fromStage = draggedLead.fromStage;
-                    }
-                  }
-
-                  if (leadId && fromStage) {
-                    moveLeadToStage(leadId, fromStage, st.key);
-                  }
-                  setDraggedLead(null);
-                }}
+                onDrop={(e) => handleDropOnStage(e, st.key)}
                 className={`w-72 md:w-80 flex flex-col rounded-2xl border ${st.color} shadow-2xs flex-shrink-0 transition-all duration-200 ${
                   isDropTarget
-                    ? 'ring-2 ring-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/40 scale-[1.01]'
+                    ? 'ring-2 ring-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/50 shadow-md scale-[1.01]'
                     : ''
                 }`}
               >
@@ -219,46 +235,56 @@ export default function CrmPipelinePage() {
                 </div>
 
                 {/* Cards Container */}
-                <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => handleDropOnStage(e, st.key)}
+                  className="flex-1 p-3 space-y-3 overflow-y-auto min-h-[150px]"
+                >
                   {stageInfo.leads.length === 0 ? (
                     <div
-                      className={`p-8 text-center text-[11px] border border-dashed rounded-xl transition-colors ${
+                      className={`p-8 text-center text-xs border border-dashed rounded-xl transition-all ${
                         isDropTarget
-                          ? 'border-emerald-500 bg-emerald-100/30 text-emerald-700 dark:text-emerald-300 font-medium'
+                          ? 'border-emerald-500 bg-emerald-100/50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold scale-[1.02]'
                           : 'text-slate-400 border-slate-200 dark:border-slate-800'
                       }`}
                     >
-                      {isDropTarget ? 'Drop Deal Here' : `No deals in ${st.label.toLowerCase()}`}
+                      {isDropTarget ? '✨ Drop Deal Here' : `No deals in ${st.label.toLowerCase()}`}
                     </div>
                   ) : (
                     stageInfo.leads.map((lead: any) => {
-                      const isBeingDragged = draggedLead?.id === lead._id;
+                      const isBeingDragged = draggedLeadId === lead._id;
 
                       return (
                         <div
                           key={lead._id}
-                          draggable
+                          draggable={true}
                           onDragStart={(e) => {
+                            draggedInfoRef.current = { id: lead._id, fromStage: st.key };
+                            setDraggedLeadId(lead._id);
                             e.dataTransfer.setData(
                               'text/plain',
                               JSON.stringify({ leadId: lead._id, fromStage: st.key })
                             );
                             e.dataTransfer.effectAllowed = 'move';
-                            setDraggedLead({ id: lead._id, fromStage: st.key });
                           }}
                           onDragEnd={() => {
-                            setDraggedLead(null);
+                            draggedInfoRef.current = null;
+                            setDraggedLeadId(null);
                             setHoveredDropStage(null);
                           }}
-                          className={`p-4 rounded-xl bg-white dark:bg-slate-900 border transition-all space-y-2.5 cursor-grab active:cursor-grabbing hover:shadow-md ${
+                          className={`p-4 rounded-xl bg-white dark:bg-slate-900 border transition-all space-y-2.5 cursor-grab active:cursor-grabbing hover:shadow-md select-none ${
                             isBeingDragged
-                              ? 'opacity-40 border-dashed border-emerald-500 scale-95'
+                              ? 'opacity-30 border-dashed border-emerald-500 ring-2 ring-emerald-400/40 scale-95'
                               : 'border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-emerald-500/40'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start gap-1.5 min-w-0">
-                              <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 flex-shrink-0 mt-0.5" />
+                              <GripVertical className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0 mt-0.5 cursor-grab" />
                               <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-2">
                                 {lead.title}
                               </h4>
@@ -283,27 +309,29 @@ export default function CrmPipelinePage() {
                             </div>
                           )}
 
-                          {/* Score & Quick Stage Stepper */}
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <span className="text-[10px] font-semibold text-slate-400">
-                              Score: <span className="text-emerald-600 font-bold">{lead.score || 50}</span>
-                            </span>
+                          {/* Stage Selector & Score Stepper */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-semibold text-slate-400">Score:</span>
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                                {lead.score || 50}
+                              </span>
+                            </div>
 
+                            {/* Dropdown Stage Picker & Quick Buttons */}
                             <div className="flex items-center gap-1">
-                              {prevStageKey && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    moveLeadToStage(lead._id, st.key, prevStageKey);
-                                  }}
-                                  disabled={movingId === lead._id}
-                                  className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                                  title={`Move to ${prevStageKey}`}
-                                >
-                                  ←
-                                </button>
-                              )}
+                              <select
+                                value={st.key}
+                                onChange={(e) => moveLeadToStage(lead._id, st.key, e.target.value)}
+                                className="text-[10px] font-semibold py-0.5 px-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none capitalize"
+                              >
+                                {STAGES.map((s) => (
+                                  <option key={s.key} value={s.key}>
+                                    {s.label}
+                                  </option>
+                                ))}
+                              </select>
+
                               {nextStageKey && (
                                 <button
                                   type="button"
@@ -312,10 +340,10 @@ export default function CrmPipelinePage() {
                                     moveLeadToStage(lead._id, st.key, nextStageKey);
                                   }}
                                   disabled={movingId === lead._id}
-                                  className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 font-bold"
+                                  className="px-2 py-0.5 rounded-lg text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 font-bold transition-colors"
                                   title={`Advance to ${nextStageKey}`}
                                 >
-                                  Advance →
+                                  →
                                 </button>
                               )}
                             </div>
